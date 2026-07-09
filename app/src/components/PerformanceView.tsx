@@ -106,7 +106,7 @@ export function PerformanceView({ d, onTableView }: { d: Dashboard; onTableView:
 
       {/* received last 30 days */}
       <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1fr 1fr', gap: 16, marginTop: 16 }}>
-        <HeroCard bg="#EAF2F8" border="#CFE0EE" labelColor="#0B6FA4" value={d.recent} valueColor="#0B6FA4" label="Received in last 30 days" body="new TA requests opened between 6 Jun and 6 Jul 2026." bodyColor="#3E6178" />
+        <HeroCard bg="#EAF2F8" border="#CFE0EE" labelColor="#0B6FA4" value={d.recent} valueColor="#0B6FA4" label="Received in last 30 days" body="new TA requests opened between 9 Jun and 9 Jul 2026." bodyColor="#3E6178" />
         <Card><div style={cardTitle}>New by region</div><BarList rows={d.recentByRegion} labelWidth={64} trackBg="#E9F0F6" /></Card>
         <Card><div style={cardTitle}>New by practice</div><BarList rows={d.recentByPractice} labelWidth={150} trackBg="#E9F0F6" /></Card>
       </div>
@@ -154,7 +154,7 @@ export function PerformanceView({ d, onTableView }: { d: Dashboard; onTableView:
           ))}
         </div>
         <div style={{ padding: '12px 22px 14px', fontSize: 11.5, color: '#8A98A6', lineHeight: 1.55, borderTop: '1px solid #F1F4F7' }}>
-          <strong style={{ color: '#5B7186' }}>Days over</strong> = today (6 Jul 2026) − the request’s Expected Completion Date, counting only active requests (implementation status below 100%) whose target date has already passed.
+          <strong style={{ color: '#5B7186' }}>Days over</strong> = today (9 Jul 2026) − the request’s Expected Completion Date, counting only active requests (implementation status below 100%) whose target date has already passed.
         </div>
       </div>
 

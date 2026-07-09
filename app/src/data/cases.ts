@@ -4,7 +4,7 @@ import type { TACase } from './types';
 import { quarter } from '../lib/dates';
 
 /**
- * Source: UNICEF TA case export, Jan–Jul 2026 (4,366 rows).
+ * Source: UNICEF TA case export, Jan–Jul 2026 (4,429 rows, as of 9 Jul 2026).
  * Dates are Excel serial day numbers (matches the source export).
  * Every record is annotated with its expected-completion quarter (`q`).
  */
