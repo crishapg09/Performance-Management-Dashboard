@@ -12,6 +12,8 @@ export interface TACase {
   lead: string;
   reqFor: string;
   desc: string;
+  /** full (long) description, used for row tooltips */
+  full?: string;
   /** expected start (Excel serial date) */
   xs: number | null;
   /** expected completion (Excel serial date) */
@@ -30,4 +32,6 @@ export interface TACase {
   hd: 0 | 1;
   /** has objectives */
   ho: 0 | 1;
+  /** expected-completion quarter label, e.g. "2026 Q2" (derived at load) */
+  q?: string;
 }

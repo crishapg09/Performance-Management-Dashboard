@@ -1,25 +1,31 @@
 import { useMemo, useState } from 'react';
-import { CASES, TODAY } from './data/cases';
-import { computeDashboard, INITIAL_FILTERS, type FilterState } from './lib/dashboard';
+import { CASES, RAW_CASES, QUARTERS, TODAY } from './data/cases';
+import { computeDashboard, INITIAL_FILTERS, type FilterState, type ViewId } from './lib/dashboard';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
-import { KpiStrip } from './components/KpiStrip';
-import { StatusSection } from './components/StatusSection';
-import { CycleTimeSection } from './components/CycleTimeSection';
-import { DataQualitySection } from './components/DataQualitySection';
-import { WorkloadSection } from './components/WorkloadSection';
+import { PerformanceView } from './components/PerformanceView';
+import { DataQualityView } from './components/DataQualityView';
+
+const VIEW_BY_LABEL: Record<string, ViewId> = {
+  Performance: 'overview',
+  'Data Quality Review': 'quality',
+};
 
 function App() {
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
-  const d = useMemo(() => computeDashboard(CASES, TODAY, filters), [filters]);
+  const d = useMemo(() => computeDashboard(CASES, RAW_CASES, QUARTERS, TODAY, filters), [filters]);
 
+  const onView = (label: string) => setFilters((f) => ({ ...f, view: VIEW_BY_LABEL[label] ?? 'overview' }));
   const setType = (v: string) => setFilters((f) => ({ ...f, type: v }));
   const onRegion = (v: string) => setFilters((f) => ({ ...f, regions: v === 'All' ? [] : [v] }));
   const onPractice = (v: string) => setFilters((f) => ({ ...f, practice: v }));
-  const onLead = (v: string) => setFilters((f) => ({ ...f, lead: v }));
   const onToggleStatus = (v: string) =>
     setFilters((f) => ({ ...f, statuses: f.statuses.includes(v) ? f.statuses.filter((x) => x !== v) : [...f.statuses, v] }));
-  const onReset = () => setFilters(INITIAL_FILTERS);
+  const onToggleQuarter = (v: string) =>
+    setFilters((f) => ({ ...f, quarters: f.quarters.includes(v) ? f.quarters.filter((x) => x !== v) : [...f.quarters, v] }));
+  const onTableView = (view: 'new' | 'overdue') => setFilters((f) => ({ ...f, tableView: view }));
+  const onReset = () =>
+    setFilters((f) => ({ ...INITIAL_FILTERS, view: f.view, tableView: f.tableView }));
 
   return (
     <div
@@ -35,6 +41,8 @@ function App() {
       <Header metaTotal={d.metaTotal} />
 
       <FilterBar
+        viewTabs={d.viewTabs}
+        onView={onView}
         typeBtns={d.typeBtns}
         onType={setType}
         region={filters.regions[0] || 'All'}
@@ -43,11 +51,10 @@ function App() {
         practice={filters.practice}
         practiceOpts={d.practiceOpts}
         onPractice={onPractice}
-        lead={filters.lead}
-        staffOpts={d.staffOpts}
-        onLead={onLead}
         statusChips={d.statusChips}
         onToggleStatus={onToggleStatus}
+        quarterChips={d.quarterChips}
+        onToggleQuarter={onToggleQuarter}
         onReset={onReset}
       />
 
@@ -61,42 +68,8 @@ function App() {
           </div>
         </div>
 
-        <KpiStrip kpis={d.kpis} />
-
-        <StatusSection
-          statusDist={d.statusDist}
-          onTrack={d.onTrack}
-          overdue={d.overdue}
-          onTrackPct={d.onTrackPct}
-          overduePct={d.overduePct}
-          onTime={d.onTime}
-          late={d.late}
-          noEnd={d.noEnd}
-          onTimePct={d.onTimePct}
-          latePct={d.latePct}
-          noEndPct={d.noEndPct}
-          overdueByRegion={d.overdueByRegion}
-          overdueByPractice={d.overdueByPractice}
-          overdueTable={d.overdueTable}
-        />
-
-        <CycleTimeSection timeCards={d.timeCards} />
-
-        <DataQualitySection
-          checks={d.checks}
-          completeness={d.completeness}
-          noLeadCount={d.noLeadCount}
-          noLeadTable={d.noLeadTable}
-          noLeadEmpty={d.noLeadEmpty}
-        />
-
-        <WorkloadSection
-          byPractice={d.byPractice}
-          byRegion={d.byRegion}
-          topStaff={d.topStaff}
-          distinctStaff={d.distinctStaff}
-          unassigned={d.unassigned}
-        />
+        {d.isOverview && <PerformanceView d={d} onTableView={onTableView} />}
+        {d.isQuality && <DataQualityView d={d} />}
       </div>
     </div>
   );

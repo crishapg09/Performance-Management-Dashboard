@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react';
-import type { SelectOption, StatusChip, TypeButton } from '../lib/dashboard';
+import type { SelectOption, StatusChip, ToggleButton } from '../lib/dashboard';
 
 const labelStyle: React.CSSProperties = {
   fontSize: 10,
@@ -22,7 +22,9 @@ const selectStyle: React.CSSProperties = {
 };
 
 interface FilterBarProps {
-  typeBtns: TypeButton[];
+  viewTabs: ToggleButton[];
+  onView: (label: string) => void;
+  typeBtns: ToggleButton[];
   onType: (v: string) => void;
   region: string;
   regionOpts: SelectOption[];
@@ -30,15 +32,16 @@ interface FilterBarProps {
   practice: string;
   practiceOpts: SelectOption[];
   onPractice: (v: string) => void;
-  lead: string;
-  staffOpts: SelectOption[];
-  onLead: (v: string) => void;
   statusChips: StatusChip[];
   onToggleStatus: (v: string) => void;
+  quarterChips: ToggleButton[];
+  onToggleQuarter: (v: string) => void;
   onReset: () => void;
 }
 
 export function FilterBar({
+  viewTabs,
+  onView,
   typeBtns,
   onType,
   region,
@@ -47,11 +50,10 @@ export function FilterBar({
   practice,
   practiceOpts,
   onPractice,
-  lead,
-  staffOpts,
-  onLead,
   statusChips,
   onToggleStatus,
+  quarterChips,
+  onToggleQuarter,
   onReset,
 }: FilterBarProps) {
   return (
@@ -66,11 +68,46 @@ export function FilterBar({
       }}
     >
       <div style={{ maxWidth: 1340, margin: '0 auto', padding: '12px 24px' }}>
+        {/* View tabs */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          {viewTabs.map((v) => (
+            <button
+              key={v.label}
+              onClick={() => onView(v.label)}
+              style={{
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                fontSize: 13.5,
+                fontWeight: 700,
+                padding: '9px 20px',
+                borderRadius: 9,
+                border: `1px solid ${v.bd}`,
+                background: v.bg,
+                color: v.fg,
+              }}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          {/* Type segmented */}
+          {/* Type segmented (prominent) */}
           <div>
-            <div style={labelStyle}>Request type</div>
-            <div style={{ display: 'inline-flex', background: '#fff', border: '1px solid #D5DEE6', borderRadius: 8, padding: 3, gap: 2 }}>
+            <div style={{ fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: '#0B5A8A', fontWeight: 800, marginBottom: 7 }}>
+              Request type
+            </div>
+            <div
+              style={{
+                display: 'inline-flex',
+                background: '#fff',
+                border: '2px solid #0B6FA4',
+                borderRadius: 11,
+                padding: 4,
+                gap: 3,
+                boxShadow: '0 2px 8px rgba(11,111,164,.14)',
+              }}
+            >
               {typeBtns.map((t) => (
                 <button
                   key={t.label}
@@ -79,10 +116,10 @@ export function FilterBar({
                     border: 'none',
                     cursor: 'pointer',
                     fontFamily: 'inherit',
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    padding: '6px 13px',
-                    borderRadius: 6,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    padding: '10px 22px',
+                    borderRadius: 8,
                     background: t.bg,
                     color: t.fg,
                   }}
@@ -127,23 +164,6 @@ export function FilterBar({
             </select>
           </div>
 
-          {/* Staff select */}
-          <div>
-            <div style={labelStyle}>TA lead staff</div>
-            <select
-              value={lead}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => onLead(e.target.value)}
-              style={{ ...selectStyle, minWidth: 210 }}
-            >
-              <option value="All">All staff</option>
-              {staffOpts.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div style={{ flex: 1 }} />
           <button
             onClick={onReset}
@@ -164,7 +184,7 @@ export function FilterBar({
           </button>
         </div>
 
-        {/* Status chips */}
+        {/* Status + Quarter chips */}
         <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap', marginTop: 12 }}>
           <div>
             <div style={labelStyle}>Implementation status</div>
@@ -189,6 +209,30 @@ export function FilterBar({
                   }}
                 >
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: ch.dot, display: 'inline-block' }} />
+                  {ch.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={labelStyle}>Expected completion quarter</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {quarterChips.map((ch) => (
+                <button
+                  key={ch.label}
+                  onClick={() => onToggleQuarter(ch.label)}
+                  style={{
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    padding: '5px 11px',
+                    borderRadius: 999,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    border: `1px solid ${ch.bd}`,
+                    background: ch.bg,
+                    color: ch.fg,
+                  }}
+                >
                   {ch.label}
                 </button>
               ))}

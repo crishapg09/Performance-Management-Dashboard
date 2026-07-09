@@ -9,6 +9,12 @@ export function median(values: number[]): number | null {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+export function p90(values: number[]): number | null {
+  if (!values.length) return null;
+  const sorted = [...values].sort((x, y) => x - y);
+  return sorted[Math.floor(0.9 * (sorted.length - 1))];
+}
+
 export function fmtDays(n: number | null): string {
   return n == null ? '—' : Math.round(n) + 'd';
 }
