@@ -1,0 +1,35 @@
+interface HeaderProps {
+  metaTotal: string;
+}
+
+export function Header({ metaTotal }: HeaderProps) {
+  return (
+    <div style={{ maxWidth: 1340, margin: '0 auto', padding: '0 24px' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 24,
+          flexWrap: 'wrap',
+          padding: '30px 0 18px',
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: '#1CABE2', fontWeight: 700 }}>
+            Technical Assistance &middot; Performance Management
+          </div>
+          <div style={{ fontSize: 27, fontWeight: 700, letterSpacing: '-.01em', marginTop: 6 }}>
+            TA Request &amp; Implementation Dashboard
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', fontSize: 12, color: '#5B7186', lineHeight: 1.6 }}>
+          <div>
+            <span style={{ fontWeight: 700, color: '#0F2238' }}>{metaTotal}</span> requests in source
+          </div>
+          <div>Created Jan&ndash;Jun 2026 &middot; as of 30 Jun 2026</div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  *{ box-sizing:border-box; }
+  body{ margin:0; }
+  select{ -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%235B7186'/></svg>"); background-repeat:no-repeat; background-position:right 12px center; }
+  ::-webkit-scrollbar{ height:8px; width:8px; }
+  ::-webkit-scrollbar-thumb{ background:#C7D2DC; border-radius:4px; }
+</style>
+</helmet>
+<div style="min-height:100vh; background:#EDF1F4; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#0F2238; -webkit-font-smoothing:antialiased; padding-bottom:60px;">
+
+  <div style="max-width:1340px; margin:0 auto; padding:0 24px;">
+
+    <!-- Header -->
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; padding:30px 0 18px;">
+      <div>
+        <div style="font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:#1CABE2; font-weight:700;">Technical Assistance &middot; Performance Management</div>
+        <div style="font-size:27px; font-weight:700; letter-spacing:-.01em; margin-top:6px;">TA Request &amp; Implementation Dashboard</div>
+      </div>
+      <div style="text-align:right; font-size:12px; color:#5B7186; line-height:1.6;">
+        <div><span style="font-weight:700; color:#0F2238;">{{ metaTotal }}</span> requests in source</div>
+        <div>Created Jan&ndash;Jun 2026 &middot; as of 30 Jun 2026</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky filter bar -->
+  <div style="position:sticky; top:0; z-index:30; background:rgba(237,241,244,.93); backdrop-filter:blur(8px); border-bottom:1px solid #DCE3EA;">
+    <div style="max-width:1340px; margin:0 auto; padding:12px 24px;">
+      <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:flex-end;">
+
+        <!-- Type segmented -->
+        <div>
+          <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#7A8C9C; font-weight:700; margin-bottom:6px;">Request type</div>
+          <div style="display:inline-flex; background:#fff; border:1px solid #D5DEE6; border-radius:8px; padding:3px; gap:2px;">
+            <sc-for list="{{ typeBtns }}" as="t" hint-placeholder-count="3">
+              <button onClick="{{ t.on }}" style="border:none; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:600; padding:6px 13px; border-radius:6px; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- Region select -->
+        <div>
+          <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#7A8C9C; font-weight:700; margin-bottom:6px;">Region</div>
+          <select value="{{ region }}" onChange="{{ onRegion }}" style="font-family:inherit; font-size:12.5px; color:#0F2238; background-color:#fff; border:1px solid #D5DEE6; border-radius:8px; padding:8px 30px 8px 12px; min-width:160px; cursor:pointer;">
+            <option value="All">All regions</option>
+            <sc-for list="{{ regionOpts }}" as="r" hint-placeholder-count="7">
+              <option value="{{ r.value }}">{{ r.label }}</option>
+            </sc-for>
+          </select>
+        </div>
+
+        <!-- Practice select -->
+        <div>
+          <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#7A8C9C; font-weight:700; margin-bottom:6px;">Practice / sector</div>
+          <select value="{{ practice }}" onChange="{{ onPractice }}" style="font-family:inherit; font-size:12.5px; color:#0F2238; background-color:#fff; border:1px solid #D5DEE6; border-radius:8px; padding:8px 30px 8px 12px; min-width:200px; cursor:pointer;">
+            <option value="All">All practices</option>
+            <sc-for list="{{ practiceOpts }}" as="p" hint-placeholder-count="6">
+              <option value="{{ p.value }}">{{ p.label }}</option>
+            </sc-for>
+          </select>
+        </div>
+
+        <!-- Staff select -->
+        <div>
+          <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#7A8C9C; font-weight:700; margin-bottom:6px;">TA lead staff</div>
+          <select value="{{ lead }}" onChange="{{ onLead }}" style="font-family:inherit; font-size:12.5px; color:#0F2238; background-color:#fff; border:1px solid #D5DEE6; border-radius:8px; padding:8px 30px 8px 12px; min-width:210px; cursor:pointer;">
+            <option value="All">All staff</option>
+            <sc-for list="{{ staffOpts }}" as="s" hint-placeholder-count="6">
+              <option value="{{ s.value }}">{{ s.label }}</option>
+            </sc-for>
+          </select>
+        </div>
+
+        <div style="flex:1;"></div>
+        <button onClick="{{ reset }}" style="border:1px solid #D5DEE6; background:#fff; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; color:#5B7186; padding:8px 14px; border-radius:8px; align-self:flex-end;">Reset filters</button>
+      </div>
+
+      <!-- Region + Status chips -->
+      <div style="display:flex; gap:26px; flex-wrap:wrap; margin-top:12px;">
+        <div>
+          <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#7A8C9C; font-weight:700; margin-bottom:6px;">Implementation status</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <sc-for list="{{ statusChips }}" as="ch" hint-placeholder-count="7">
+              <button onClick="{{ ch.on }}" style="font-family:inherit; cursor:pointer; padding:5px 11px; border-radius:999px; font-size:11.5px; font-weight:600; border:1px solid {{ ch.bd }}; background:{{ ch.bg }}; color:{{ ch.fg }}; display:inline-flex; align-items:center; gap:6px;"><span style="width:8px; height:8px; border-radius:2px; background:{{ ch.dot }}; display:inline-block;"></span>{{ ch.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1340px; margin:0 auto; padding:0 24px;">
+
+    <!-- Loading -->
+    <sc-if value="{{ notLoaded }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:80px 0; text-align:center; color:#7A8C9C; font-size:14px;">Loading 4,160 records&hellip;</div>
+    </sc-if>
+
+    <sc-if value="{{ loaded }}">
+    <div>
+
+      <!-- Active filter summary -->
+      <div style="padding:20px 2px 4px;">
+        <div style="font-size:19px; font-weight:700; letter-spacing:-.01em; color:#0F2238;">{{ filterTitle }}</div>
+        <div style="font-size:13px; color:#5B7186; margin-top:5px;">Showing <span style="font-weight:700; color:#0F2238;">{{ total }}</span> requests <span style="color:#9AA7B2;">({{ pctOfAll }} of all)</span></div>
+      </div>
+
+      <!-- KPI strip -->
+      <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-top:8px;">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
+          <div style="background:#fff; border:1px solid #E3E9EF; border-top:3px solid {{ k.accent }}; border-radius:10px; padding:15px 16px;">
+            <div style="font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:#7A8C9C; font-weight:700; min-height:26px;">{{ k.label }}</div>
+            <div style="font-size:30px; font-weight:700; letter-spacing:-.02em; color:{{ k.color }}; font-variant-numeric:tabular-nums; line-height:1.1; margin-top:4px;">{{ k.value }}</div>
+            <div style="font-size:11.5px; color:#7A8C9C; margin-top:3px;">{{ k.sub }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- ================= SECTION 1 : STATUS & OVERDUE ================= -->
+      <div style="display:flex; align-items:center; gap:12px; margin:34px 0 14px;">
+        <div style="width:26px; height:26px; border-radius:7px; background:#0B5A8A; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;">1</div>
+        <div style="font-size:18px; font-weight:700;">Implementation status &amp; completion against target date</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1.15fr 1fr; gap:16px;">
+        <!-- status distribution -->
+        <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:20px 22px;">
+          <div style="font-size:13.5px; font-weight:700; margin-bottom:14px;">Where the portfolio stands</div>
+          <div style="display:flex; height:36px; border-radius:8px; overflow:hidden; border:1px solid #E3E9EF;">
+            <sc-for list="{{ statusDist }}" as="s" hint-placeholder-count="7">
+              <div title="{{ s.title }}" style="width:{{ s.pct }}%; background:{{ s.color }};"></div>
+            </sc-for>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:12px 20px; margin-top:16px;">
+            <sc-for list="{{ statusDist }}" as="s" hint-placeholder-count="7">
+              <div style="display:flex; align-items:center; gap:7px;">
+                <span style="width:11px; height:11px; border-radius:3px; background:{{ s.color }}; display:inline-block;"></span>
+                <span style="font-size:12.5px; color:#43586B;">{{ s.label }}</span>
+                <span style="font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums;">{{ s.n }}</span>
+                <span style="font-size:11px; color:#9AA7B2;">{{ s.pctLabel }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- completion vs target -->
+        <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:20px 22px;">
+          <div style="font-size:13.5px; font-weight:700; margin-bottom:14px;">Completion vs. expected date</div>
+          <div style="display:flex; gap:22px;">
+            <div style="flex:1;">
+              <div style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#7A8C9C; font-weight:700; margin-bottom:8px;">Active requests</div>
+              <div style="display:flex; height:30px; border-radius:6px; overflow:hidden; border:1px solid #E3E9EF;">
+                <div title="On track" style="width:{{ onTrackPct }}%; background:#3E9CD6;"></div>
+                <div title="Past target" style="width:{{ overduePct }}%; background:#C0453F;"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:12px;">
+                <span style="color:#3E9CD6; font-weight:700;">{{ onTrack }} on track</span>
+                <span style="color:#C0453F; font-weight:700;">{{ overdue }} overdue</span>
+              </div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#7A8C9C; font-weight:700; margin-bottom:8px;">Completed (100%)</div>
+              <div style="display:flex; height:30px; border-radius:6px; overflow:hidden; border:1px solid #E3E9EF;">
+                <div title="On time" style="width:{{ onTimePct }}%; background:#2E7D5B;"></div>
+                <div title="Late" style="width:{{ latePct }}%; background:#E0A21E;"></div>
+                <div title="No close date" style="width:{{ noEndPct }}%; background:#D6E0E8;"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:12px;">
+                <span style="color:#2E7D5B; font-weight:700;">{{ onTime }} on time</span>
+                <span style="color:#E0A21E; font-weight:700;">{{ late }} late</span>
+              </div>
+              <div style="font-size:11px; color:#9AA7B2; margin-top:3px;">{{ noEnd }} marked 100% with no close date</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- overdue hero + breakdowns -->
+      <div style="display:grid; grid-template-columns:0.8fr 1fr 1fr; gap:16px; margin-top:16px;">
+        <div style="background:#FBF0EF; border:1px solid #F0D2CF; border-radius:10px; padding:20px 22px; display:flex; flex-direction:column; justify-content:center;">
+          <div style="font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#B0453F; font-weight:700;">Should be closed by now</div>
+          <div style="font-size:52px; font-weight:700; letter-spacing:-.03em; color:#C0453F; line-height:1; margin:10px 0 6px; font-variant-numeric:tabular-nums;">{{ overdue }}</div>
+          <div style="font-size:12.5px; color:#8A5450; line-height:1.5;">active requests are past their expected completion date but not yet at 100%.</div>
+        </div>
+        <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:20px 22px;">
+          <div style="font-size:13px; font-weight:700; margin-bottom:14px;">Overdue by region</div>
+          <sc-for list="{{ overdueByRegion }}" as="row" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:64px 1fr 34px; align-items:center; gap:10px; margin-bottom:9px;">
+              <div style="font-size:12px; color:#43586B; font-weight:600;">{{ row.label }}</div>
+              <div style="height:9px; background:#F2EAE9; border-radius:5px;"><div style="height:100%; width:{{ row.pct }}%; background:#C0453F; border-radius:5px;"></div></div>
+              <div style="font-size:12.5px; font-weight:700; text-align:right; font-variant-numeric:tabular-nums;">{{ row.n }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:20px 22px;">
+          <div style="font-size:13px; font-weight:700; margin-bottom:14px;">Overdue by practice</div>
+          <sc-for list="{{ overdueByPractice }}" as="row" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:150px 1fr 34px; align-items:center; gap:10px; margin-bottom:9px;">
+              <div style="font-size:12px; color:#43586B; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ row.label }}</div>
+              <div style="height:9px; background:#F2EAE9; border-radius:5px;"><div style="height:100%; width:{{ row.pct }}%; background:#C0453F; border-radius:5px;"></div></div>
+              <div style="font-size:12.5px; font-weight:700; text-align:right; font-variant-numeric:tabular-nums;">{{ row.n }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- overdue table -->
+      <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:6px 0 4px; margin-top:16px; overflow:hidden;">
+        <div style="font-size:13px; font-weight:700; padding:16px 22px 10px;">Most overdue active requests</div>
+        <div style="display:grid; grid-template-columns:104px 1fr 150px 70px 1fr 92px; gap:10px; padding:8px 22px; background:#F6F8FA; border-top:1px solid #EDF1F4; border-bottom:1px solid #EDF1F4; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:#7A8C9C; font-weight:700;">
+          <div>Case</div><div>Short description</div><div>Practice</div><div>Status</div><div>TA lead</div><div style="text-align:right;">Days over</div>
+        </div>
+        <sc-for list="{{ overdueTable }}" as="r" hint-placeholder-count="8">
+          <div style="display:grid; grid-template-columns:104px 1fr 150px 70px 1fr 92px; gap:10px; padding:11px 22px; border-bottom:1px solid #F1F4F7; align-items:center; font-size:12.5px;">
+            <div style="font-weight:600; color:#0B5A8A; font-variant-numeric:tabular-nums;">{{ r.id }}</div>
+            <div style="color:#5B7186; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.desc }}</div>
+            <div style="color:#43586B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.practice }}</div>
+            <div><span style="font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:5px; background:{{ r.stBg }}; color:{{ r.stFg }};">{{ r.status }}</span></div>
+            <div style="color:{{ r.leadColor }}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.lead }}</div>
+            <div style="text-align:right; font-weight:700; color:#C0453F; font-variant-numeric:tabular-nums;">{{ r.days }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- ================= SECTION 2 : TIMELINESS ================= -->
+      <div style="display:flex; align-items:center; gap:12px; margin:34px 0 14px;">
+        <div style="width:26px; height:26px; border-radius:7px; background:#0B5A8A; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;">2</div>
+        <div style="font-size:18px; font-weight:700;">Cycle time &mdash; opening, activity &amp; closure</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
+        <sc-for list="{{ timeCards }}" as="t" hint-placeholder-count="4">
+          <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:18px 20px;">
+            <div style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#7A8C9C; font-weight:700;">{{ t.label }}</div>
+            <div style="font-size:32px; font-weight:700; letter-spacing:-.02em; color:#0F2238; margin-top:6px; font-variant-numeric:tabular-nums;">{{ t.value }}</div>
+            <div style="font-size:12px; color:#7A8C9C; margin-top:2px;">{{ t.sub }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:#EEF6FB; border:1px solid #CFE6F2; border-radius:10px; padding:13px 18px; margin-top:14px; display:flex; gap:10px; align-items:flex-start;">
+        <div style="width:18px; height:18px; border-radius:50%; background:#1CABE2; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">i</div>
+        <div style="font-size:12.5px; color:#2C5A75; line-height:1.55;">The source export has no <strong>assignment date</strong> or <strong>date a request reached 25%</strong>. &ldquo;Time to update&rdquo; uses the single <em>Updated</em> timestamp as a proxy for activity, and <em>Opened</em> equals <em>Created</em> for every record &mdash; so true time-to-assignment cannot be measured until those events are captured at source.</div>
+      </div>
+
+      <!-- ================= SECTION 3 : INCONSISTENCIES ================= -->
+      <div style="display:flex; align-items:center; gap:12px; margin:34px 0 14px;">
+        <div style="width:26px; height:26px; border-radius:7px; background:#0B5A8A; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;">3</div>
+        <div style="font-size:18px; font-weight:700;">Data quality &amp; inconsistencies</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <!-- inconsistency checks -->
+        <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:20px 22px;">
+          <div style="font-size:13.5px; font-weight:700; margin-bottom:14px;">Flagged inconsistencies</div>
+          <sc-for list="{{ checks }}" as="c" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid #F1F4F7;">
+              <div style="font-size:26px; font-weight:700; color:{{ c.color }}; font-variant-numeric:tabular-nums; min-width:54px; text-align:right;">{{ c.n }}</div>
+              <div>
+                <div style="font-size:13px; font-weight:600; color:#1F3346;">{{ c.label }}</div>
+                <div style="font-size:11.5px; color:#8A98A6;">{{ c.sub }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <!-- completeness -->
+        <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:20px 22px;">
+          <div style="font-size:13.5px; font-weight:700; margin-bottom:14px;">Field completeness</div>
+          <sc-for list="{{ completeness }}" as="row" hint-placeholder-count="7">
+            <div style="display:grid; grid-template-columns:160px 1fr 48px; align-items:center; gap:10px; margin-bottom:11px;">
+              <div style="font-size:12.5px; color:#43586B;">{{ row.label }}</div>
+              <div style="height:9px; background:#EEF2F6; border-radius:5px;"><div style="height:100%; width:{{ row.pct }}%; background:{{ row.color }}; border-radius:5px;"></div></div>
+              <div style="font-size:12.5px; font-weight:700; text-align:right; color:{{ row.color }}; font-variant-numeric:tabular-nums;">{{ row.pctLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- advanced status no lead table -->
+      <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:6px 0 4px; margin-top:16px; overflow:hidden;">
+        <div style="font-size:13px; font-weight:700; padding:16px 22px 10px;">Advanced implementation status, but no TA lead assigned <span style="color:#C0453F;">({{ noLeadCount }})</span></div>
+        <div style="display:grid; grid-template-columns:104px 1fr 150px 90px 80px; gap:10px; padding:8px 22px; background:#F6F8FA; border-top:1px solid #EDF1F4; border-bottom:1px solid #EDF1F4; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:#7A8C9C; font-weight:700;">
+          <div>Case</div><div>Short description</div><div>Practice</div><div>Region</div><div>Status</div>
+        </div>
+        <sc-for list="{{ noLeadTable }}" as="r" hint-placeholder-count="6">
+          <div style="display:grid; grid-template-columns:104px 1fr 150px 90px 80px; gap:10px; padding:11px 22px; border-bottom:1px solid #F1F4F7; align-items:center; font-size:12.5px;">
+            <div style="font-weight:600; color:#0B5A8A; font-variant-numeric:tabular-nums;">{{ r.id }}</div>
+            <div style="color:#5B7186; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.desc }}</div>
+            <div style="color:#43586B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.practice }}</div>
+            <div style="color:#43586B;">{{ r.region }}</div>
+            <div><span style="font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:5px; background:{{ r.stBg }}; color:{{ r.stFg }};">{{ r.status }}</span></div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noLeadEmpty }}"><div style="padding:18px 22px; font-size:12.5px; color:#9AA7B2;">No such records in the current filter.</div></sc-if>
+      </div>
+
+      <!-- ================= SECTION 4 : WORKLOAD ================= -->
+      <div style="display:flex; align-items:center; gap:12px; margin:34px 0 14px;">
+        <div style="width:26px; height:26px; border-radius:7px; background:#16385C; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;">4</div>
+        <div style="font-size:18px; font-weight:700;">Workload &mdash; practices, regions &amp; staff</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:20px 22px;">
+          <div style="font-size:13.5px; font-weight:700; margin-bottom:14px;">Requests by practice</div>
+          <sc-for list="{{ byPractice }}" as="row" hint-placeholder-count="10">
+            <div style="display:grid; grid-template-columns:175px 1fr 38px; align-items:center; gap:10px; margin-bottom:8px;">
+              <div style="font-size:12px; color:#43586B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ row.label }}</div>
+              <div style="height:9px; background:#EEF2F6; border-radius:5px;"><div style="height:100%; width:{{ row.pct }}%; background:#3E9CD6; border-radius:5px;"></div></div>
+              <div style="font-size:12.5px; font-weight:700; text-align:right; font-variant-numeric:tabular-nums;">{{ row.n }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:20px 22px;">
+          <div style="font-size:13.5px; font-weight:700; margin-bottom:14px;">Requests by region</div>
+          <sc-for list="{{ byRegion }}" as="row" hint-placeholder-count="9">
+            <div style="display:grid; grid-template-columns:80px 1fr 38px; align-items:center; gap:10px; margin-bottom:8px;">
+              <div style="font-size:12px; color:#43586B; font-weight:600;">{{ row.label }}</div>
+              <div style="height:9px; background:#EEF2F6; border-radius:5px;"><div style="height:100%; width:{{ row.pct }}%; background:#0B6FA4; border-radius:5px;"></div></div>
+              <div style="font-size:12.5px; font-weight:700; text-align:right; font-variant-numeric:tabular-nums;">{{ row.n }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background:#fff; border:1px solid #E3E9EF; border-radius:10px; padding:20px 22px; margin-top:16px;">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px;">
+          <div style="font-size:13.5px; font-weight:700;">Busiest TA lead staff</div>
+          <div style="font-size:12px; color:#7A8C9C;">{{ distinctStaff }} distinct leads &middot; <span style="color:#C0453F; font-weight:700;">{{ unassigned }}</span> requests unassigned</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px 40px;">
+          <sc-for list="{{ topStaff }}" as="row" hint-placeholder-count="12">
+            <div style="display:grid; grid-template-columns:185px 1fr 34px; align-items:center; gap:10px;">
+              <div style="font-size:12px; color:#43586B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ row.label }}</div>
+              <div style="height:8px; background:#EEF2F6; border-radius:4px;"><div style="height:100%; width:{{ row.pct }}%; background:#5BA3D0; border-radius:4px;"></div></div>
+              <div style="font-size:12px; font-weight:700; text-align:right; font-variant-numeric:tabular-nums;">{{ row.n }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+    </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { loaded:false, type:'All', regions:[], practice:'All', statuses:[], lead:'All' };
+
+  async componentDidMount(){
+    const m = await import('./data/ta-data.js');
+    this.CASES = m.CASES.filter(c=> c.region && c.region!=='HQ' && c.status!=='Discontinued');
+    this.TODAY = m.TODAY;
+    // stable option lists
+    this.REGIONS = this._opts('region');
+    this.PRACTICES = this._opts('practice');
+    this.STAFF = this._opts('lead');
+    this.setState({ loaded:true });
+  }
+
+  _opts(key){
+    const m = {};
+    for(const c of this.CASES){ const v=c[key]; if(v) m[v]=(m[v]||0)+1; }
+    return Object.entries(m).sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
+  }
+
+  // ---- helpers ----
+  _mean(a){ return a.length? a.reduce((x,y)=>x+y,0)/a.length : null; }
+  _median(a){ if(!a.length) return null; const s=[...a].sort((x,y)=>x-y); const m=Math.floor(s.length/2); return s.length%2? s[m] : (s[m-1]+s[m])/2; }
+  _days(n){ return n==null? '\u2014' : Math.round(n)+'d'; }
+  _fmt(n){ return n==null? '\u2014' : Number(n).toLocaleString('en-US'); }
+  _pct(n,d){ return d? Math.round(n/d*100) : 0; }
+  _group(arr,key){ const m={}; for(const c of arr){ const k=c[key]||'\u2014'; m[k]=(m[k]||0)+1; } return Object.entries(m).map(([label,n])=>({label,n})).sort((a,b)=>b.n-a.n); }
+  _bars(rows,color,limit){ const max=Math.max(1,...rows.map(r=>r.n)); return rows.slice(0,limit).map(r=>({...r,color,pct:Math.round(r.n/max*100)})); }
+
+  // ---- filter actions ----
+  _setType(t){ this.setState({type:t}); }
+  _toggle(key,v){ const arr=this.state[key]; const next = arr.includes(v)? arr.filter(x=>x!==v) : [...arr,v]; this.setState({[key]:next}); }
+  _reset(){ this.setState({type:'All',regions:[],practice:'All',statuses:[],lead:'All'}); }
+
+  _match(c){
+    const s=this.state;
+    if(s.type!=='All' && c.type!==s.type) return false;
+    if(s.regions.length && !s.regions.includes(c.region)) return false;
+    if(s.practice!=='All' && c.practice!==s.practice) return false;
+    if(s.statuses.length && !s.statuses.includes(c.status)) return false;
+    if(s.lead!=='All' && c.lead!==s.lead) return false;
+    return true;
+  }
+
+  renderVals(){
+    const STC = {'0%':'#D6E0E8','25%':'#9CC6E0','50%':'#5BA3D0','75%':'#2C7DB5','100%':'#0B5A8A','Discontinued':'#9AA7B2','Unassigned':'#E0A21E'};
+    const ORDER = ['0%','25%','50%','75%','100%','Unassigned'];
+    const stChip = (s)=>{ const dark=['50%','75%','100%','Discontinued']; return {bg:STC[s], fg: dark.includes(s)?'#fff':'#1F3346'}; };
+
+    if(!this.state.loaded){
+      return { loaded:false, notLoaded:true };
+    }
+    const TODAY=this.TODAY;
+    const F = this.CASES.filter(c=>this._match(c));
+    const total = F.length;
+    const ALL = this.CASES.length;
+
+    // KPIs
+    const done = F.filter(c=>c.status==='100%');
+    const activeSet = F.filter(c=>!['100%','Discontinued','Unassigned'].includes(c.status));
+    const overdueSet = activeSet.filter(c=>c.xc!=null && c.xc < TODAY).sort((a,b)=>(TODAY-b.xc)-(TODAY-a.xc));
+    const onTrack = activeSet.length - overdueSet.length;
+    const closeArr = F.filter(c=>c.cl&&c.op).map(c=>c.cl-c.op);
+    const updArr = F.filter(c=>c.up&&c.op).map(c=>c.up-c.op);
+
+    // inconsistency checks
+    const adv = ['25%','50%','75%','100%'];
+    const noLead = F.filter(c=>adv.includes(c.status) && !c.lead);
+    const noClose = done.filter(c=>!c.cl && !c.rs);
+    const noRegion = F.filter(c=>!c.region);
+    const noObj = F.filter(c=>!c.ho);
+    const flagsTotal = noLead.length + noClose.length + noRegion.length;
+
+    // status distribution
+    const statusDist = ORDER.map(s=>{
+      const n=F.filter(c=>c.status===s).length;
+      return { label:s, n, color:STC[s], pct: total? (n/total*100):0, pctLabel: total?Math.round(n/total*100)+'%':'0%', title:`${s}: ${n}` };
+    });
+
+    // completion vs target (completed)
+    const compEnd = done.filter(c=>(c.cl||c.rs)&&c.xc);
+    const onTime = compEnd.filter(c=>(c.cl||c.rs)<=c.xc).length;
+    const late = compEnd.length - onTime;
+    const noEnd = done.filter(c=>!(c.cl||c.rs)).length;
+    const dT=done.length||1;
+
+    // overdue table
+    const overdueTable = overdueSet.slice(0,8).map(c=>({
+      id:c.id, desc:c.desc||'\u2014', practice:c.practice||'\u2014', status:c.status,
+      lead: c.lead||'\u2014 none \u2014', leadColor: c.lead?'#43586B':'#C0453F',
+      days: '+'+Math.round(TODAY-c.xc), ...((v)=>({stBg:v.bg,stFg:v.fg}))(stChip(c.status))
+    }));
+
+    // no-lead table
+    const noLeadTable = noLead.slice(0,8).map(c=>({
+      id:c.id, desc:c.desc||'\u2014', practice:c.practice||'\u2014', region:c.region||'\u2014', status:c.status,
+      ...((v)=>({stBg:v.bg,stFg:v.fg}))(stChip(c.status))
+    }));
+
+    // completeness
+    const cFields = [
+      ['Region', c=>!!c.region],
+      ['TA lead assigned', c=>!!c.lead],
+      ['Expected completion', c=>c.xc!=null],
+      ['Objectives', c=>!!c.ho],
+      ['Description', c=>!!c.hd],
+      ['Modality', c=>!!c.modality],
+      ['Programme offer', c=>!!c.offer],
+    ];
+    const completeness = cFields.map(([label,fn])=>{
+      const pct = total? Math.round(F.filter(fn).length/total*100):0;
+      const color = pct>=95?'#2E7D5B': pct>=80?'#3E9CD6':'#E0A21E';
+      return { label, pct, pctLabel: pct+'%', color };
+    });
+
+    // filter option chips
+    const statusChips = ORDER.map(v=>{
+      const on = this.state.statuses.includes(v);
+      return { label:v, dot:STC[v], on:()=>this._toggle('statuses',v),
+        bg: on?'#16385C':'#fff', fg: on?'#fff':'#43586B', bd: on?'#16385C':'#D5DEE6' };
+    });
+    const typeBtns = ['All','Big Ticket','Routine'].map(v=>{
+      const on = this.state.type===v;
+      return { label:v, on:()=>this._setType(v), bg:on?'#0B6FA4':'transparent', fg:on?'#fff':'#5B7186' };
+    });
+
+    // dynamic filter title
+    const st = this.state;
+    const anyFilter = st.type!=='All' || st.regions.length || st.practice!=='All' || st.statuses.length || st.lead!=='All';
+    let filterTitle;
+    if(!anyFilter){
+      filterTitle = 'All TA requests \u2014 every region, practice & status';
+    } else {
+      const parts = [];
+      parts.push(st.type==='All' ? 'All requests' : st.type + ' requests');
+      parts.push(st.regions.length ? st.regions[0] : 'all regions');
+      if(st.practice!=='All') parts.push(st.practice);
+      if(st.statuses.length) parts.push(st.statuses.join(', ') + (st.statuses.length>1?' status':' implemented'));
+      if(st.lead!=='All') parts.push('led by ' + st.lead);
+      filterTitle = parts.join('  \u00b7  ');
+    }
+
+    const kpis = [
+      { label:'Total requests', value:this._fmt(total), sub:'in current filter', accent:'#0B6FA4', color:'#0F2238' },
+      { label:'In progress', value:this._fmt(activeSet.length), sub:'1\u201375% implemented', accent:'#3E9CD6', color:'#0F2238' },
+      { label:'Overdue', value:this._fmt(overdueSet.length), sub:'past target, not done', accent:'#C0453F', color:'#C0453F' },
+      { label:'Completed', value:this._pct(done.length,total)+'%', sub:this._fmt(done.length)+' at 100%', accent:'#2E7D5B', color:'#2E7D5B' },
+      { label:'Avg open \u2192 close', value:this._days(this._mean(closeArr)), sub:'median '+this._days(this._median(closeArr)), accent:'#16385C', color:'#0F2238' },
+      { label:'Data flags', value:this._fmt(flagsTotal), sub:'inconsistencies', accent:'#E0A21E', color:'#0F2238' },
+    ];
+
+    const timeCards = [
+      { label:'Avg open \u2192 update', value:this._days(this._mean(updArr)), sub:'median '+this._days(this._median(updArr))+' \u00b7 proxy for activity' },
+      { label:'Avg open \u2192 close', value:this._days(this._mean(closeArr)), sub:'median '+this._days(this._median(closeArr)) },
+      { label:'Closed requests', value:this._fmt(closeArr.length), sub:'have a recorded close date' },
+      { label:'Finalized on time', value:compEnd.length? this._pct(onTime,compEnd.length)+'%':'\u2014', sub:onTime+' of '+compEnd.length+' with a target' },
+    ];
+
+    const checks = [
+      { n:noLead.length, label:'Advanced status, no TA lead', sub:'\u226525% implemented yet unassigned', color:'#C0453F' },
+      { n:noClose.length, label:'100% with no close date', sub:'marked complete, never closed', color:'#E0A21E' },
+      { n:overdueSet.length, label:'Active & past target date', sub:'expected completion has passed', color:'#C0453F' },
+      { n:noRegion.length+noObj.length, label:'Missing region or objectives', sub:noRegion.length+' no region \u00b7 '+noObj.length+' no objectives', color:'#E0A21E' },
+    ];
+
+    return {
+      loaded:true, notLoaded:false,
+      metaTotal: this._fmt(ALL),
+      filterTitle,
+      total: this._fmt(total),
+      pctOfAll: this._pct(total,ALL)+'%',
+      // filters
+      typeBtns, statusChips,
+      practice:this.state.practice, lead:this.state.lead,
+      region: this.state.regions[0] || 'All',
+      regionOpts: this.REGIONS.map(([v,n])=>({value:v, label:`${v} (${n})`})),
+      practiceOpts: this.PRACTICES.map(([v,n])=>({value:v, label:`${v} (${n})`})),
+      staffOpts: this.STAFF.map(([v,n])=>({value:v, label:`${v} (${n})`})),
+      onRegion: e=>this.setState({regions: e.target.value==='All'? [] : [e.target.value]}),
+      onPractice: e=>this.setState({practice:e.target.value}),
+      onLead: e=>this.setState({lead:e.target.value}),
+      reset: ()=>this._reset(),
+      // kpis
+      kpis,
+      // status
+      statusDist,
+      onTrack, overdue:overdueSet.length,
+      onTrackPct: activeSet.length? onTrack/activeSet.length*100:0,
+      overduePct: activeSet.length? overdueSet.length/activeSet.length*100:0,
+      onTime, late, noEnd,
+      onTimePct: onTime/dT*100, latePct: late/dT*100, noEndPct: noEnd/dT*100,
+      overdueByRegion: this._bars(this._group(overdueSet,'region'),'#C0453F',6),
+      overdueByPractice: this._bars(this._group(overdueSet,'practice'),'#C0453F',6),
+      overdueTable,
+      // timeliness
+      timeCards,
+      // data quality
+      checks, completeness,
+      noLeadCount: noLead.length, noLeadTable, noLeadEmpty: noLead.length===0,
+      // workload
+      byPractice: this._bars(this._group(F,'practice'),'#3E9CD6',10),
+      byRegion: this._bars(this._group(F.filter(c=>c.region),'region'),'#0B6FA4',9),
+      topStaff: this._bars(this._group(F.filter(c=>c.lead),'lead'),'#5BA3D0',12),
+      distinctStaff: new Set(F.filter(c=>c.lead).map(c=>c.lead)).size,
+      unassigned: F.filter(c=>!c.lead).length,
+    };
+  }
+}
+</script>
+</body>
+</html>
