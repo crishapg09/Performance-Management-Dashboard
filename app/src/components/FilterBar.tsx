@@ -26,12 +26,15 @@ interface FilterBarProps {
   onView: (label: string) => void;
   typeBtns: ToggleButton[];
   onType: (v: string) => void;
-  region: string;
-  regionOpts: SelectOption[];
-  onRegion: (v: string) => void;
   practice: string;
   practiceOpts: SelectOption[];
   onPractice: (v: string) => void;
+  region: string;
+  regionOpts: SelectOption[];
+  onRegion: (v: string) => void;
+  office: string;
+  officeOpts: SelectOption[];
+  onOffice: (v: string) => void;
   statusChips: StatusChip[];
   onToggleStatus: (v: string) => void;
   quarterChips: ToggleButton[];
@@ -44,12 +47,15 @@ export function FilterBar({
   onView,
   typeBtns,
   onType,
-  region,
-  regionOpts,
-  onRegion,
   practice,
   practiceOpts,
   onPractice,
+  region,
+  regionOpts,
+  onRegion,
+  office,
+  officeOpts,
+  onOffice,
   statusChips,
   onToggleStatus,
   quarterChips,
@@ -130,6 +136,23 @@ export function FilterBar({
             </div>
           </div>
 
+          {/* Practice select */}
+          <div>
+            <div style={labelStyle}>Practice / sector</div>
+            <select
+              value={practice}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => onPractice(e.target.value)}
+              style={{ ...selectStyle, minWidth: 200 }}
+            >
+              <option value="All">All practices</option>
+              {practiceOpts.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Region select */}
           <div>
             <div style={labelStyle}>Region</div>
@@ -147,18 +170,18 @@ export function FilterBar({
             </select>
           </div>
 
-          {/* Practice select */}
+          {/* Country office select */}
           <div>
-            <div style={labelStyle}>Practice / sector</div>
+            <div style={labelStyle}>Country office</div>
             <select
-              value={practice}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => onPractice(e.target.value)}
-              style={{ ...selectStyle, minWidth: 200 }}
+              value={office}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => onOffice(e.target.value)}
+              style={{ ...selectStyle, minWidth: 180 }}
             >
-              <option value="All">All practices</option>
-              {practiceOpts.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
+              <option value="All">All countries</option>
+              {officeOpts.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
                 </option>
               ))}
             </select>

@@ -27,7 +27,7 @@ export function Header({ metaTotal }: HeaderProps) {
           <div>
             <span style={{ fontWeight: 700, color: '#0F2238' }}>{metaTotal}</span> requests in source
           </div>
-          <div>Created Jan&ndash;Jul 2026 &middot; as of 9 Jul 2026</div>
+          <div>Created Jan&ndash;Jul 2026 &middot; as of 11 Jul 2026</div>
         </div>
       </div>
     </div>

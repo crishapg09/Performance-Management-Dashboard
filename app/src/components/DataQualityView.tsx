@@ -87,7 +87,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '6px 0 4px', marginTop: 16, overflow: 'hidden' }}>
         <div style={{ fontSize: 13, fontWeight: 700, padding: '16px 22px 10px' }}>Advanced implementation status, but no TA lead assigned <span style={{ color: '#C0453F' }}>({d.noLeadCount})</span></div>
         <div style={{ display: 'grid', gridTemplateColumns: noLeadCols, gap: 10, padding: '8px 22px', background: '#F6F8FA', borderTop: '1px solid #EDF1F4', borderBottom: '1px solid #EDF1F4', fontSize: 10.5, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7A8C9C', fontWeight: 700 }}>
-          <div>Case</div><div>Short description</div><div>Practice</div><div>Region</div><div>Status</div>
+          <div>Case</div><div>Description</div><div>Practice</div><div>Region</div><div>Status</div>
         </div>
         <div style={{ maxHeight: 360, overflowY: 'auto' }}>
           {d.noLeadTable.map((r) => (
