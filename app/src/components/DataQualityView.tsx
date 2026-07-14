@@ -1,7 +1,15 @@
+import { useState } from 'react';
 import type { Dashboard, CheckItem, CompletenessRow, QualityRegionRow, BucketRow, DqTableRow, TransitionCard } from '../lib/dashboard';
 import type { ColoredBarRow } from '../lib/aggregate';
 import { Card } from './Card';
 import { KpiStrip } from './KpiStrip';
+
+const SUBTABS = [
+  { id: 'received', label: 'Received & in review' },
+  { id: 'delivery', label: 'Started & in delivery' },
+  { id: 'overdue', label: 'Overdue & closure' },
+] as const;
+type DqTab = (typeof SUBTABS)[number]['id'];
 
 const bigTitle: React.CSSProperties = { fontSize: 13.5, fontWeight: 700 };
 const subLabel: React.CSSProperties = { fontSize: 11.5, color: '#9AA7B2', marginBottom: 16 };
@@ -157,6 +165,7 @@ function TransitionCards({ cards }: { cards: TransitionCard[] }) {
 
 export function DataQualityView({ d }: { d: Dashboard }) {
   const dq = d.dq;
+  const [tab, setTab] = useState<DqTab>('received');
   return (
     <>
       <KpiStrip kpis={dq.kpis} />
@@ -168,6 +177,35 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </div>
       </div>
 
+      {/* Sub-tab bar */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #DCE3EA', margin: '22px 0 6px', flexWrap: 'wrap' }}>
+        {SUBTABS.map((t) => {
+          const on = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 16.5,
+                fontWeight: 700,
+                padding: '12px 20px',
+                color: on ? '#0B5A8A' : '#5B7186',
+                borderBottom: on ? '3px solid #0B5A8A' : '3px solid transparent',
+                marginBottom: -1,
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === 'received' && (
+      <>
       {/* ===== ① Received & in review ===== */}
       <StageHeading n={1} title="Received & in review — Unassigned · 0% · 25%" bg="#0B6FA4" />
       <Intro>
@@ -217,6 +255,11 @@ export function DataQualityView({ d }: { d: Dashboard }) {
 
       <TransitionCards cards={dq.transitionCards} />
 
+      </>
+      )}
+
+      {tab === 'delivery' && (
+      <>
       {/* ===== ② Started & in delivery ===== */}
       <StageHeading n={2} title="Started & in delivery — 50% onwards" bg="#16385C" />
       <Intro>
@@ -266,6 +309,11 @@ export function DataQualityView({ d }: { d: Dashboard }) {
 
       <DqTable title="Started records needing cleanup" count={dq.flagCount} rows={dq.flagTable} metricLabel="Missing / issue" />
 
+      </>
+      )}
+
+      {tab === 'overdue' && (
+      <>
       {/* ===== ③ Overdue, at-risk & closure ===== */}
       <StageHeading n={3} title="Overdue, at-risk & closure" bg="#C0453F" />
       <Intro>Timeliness against the expected completion date, plus records that should now be closed.</Intro>
@@ -315,6 +363,8 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         footer="Once a TA is completed (100%) or discontinued, it should be closed. These records still have no close date."
       />
       <div style={note}>&nbsp;</div>
+      </>
+      )}
     </>
   );
 }
