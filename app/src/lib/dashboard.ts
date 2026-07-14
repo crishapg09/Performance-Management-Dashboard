@@ -116,23 +116,8 @@ export interface Dashboard {
   distinctStaff: number;
   unassigned: number;
 
-  // Data Quality
-  dqKpis: KPI[];
-  dqChecks: CheckItem[];
-  dqTotal: string;
-  contradictionPct: string;
-  xsBeforeCr: string;
-  xsBeforeCrPct: string;
-  dupCount: string;
-  stale60Count: string;
-  staleByRegion: ColoredBarRow[];
-  qualityByRegion: QualityRegionRow[];
-  objByPractice: ObjPracticeRow[];
-  checks: CheckItem[];
-  completeness: CompletenessRow[];
-  noLeadCount: number;
-  noLeadTable: NoLeadTableRow[];
-  noLeadEmpty: boolean;
+  // Data Quality — stage-aware (see DataQuality)
+  dq: DataQuality;
 }
 
 const notOther = (key: keyof TACase, c: TACase) => !(key === 'practice' && c.practice === 'Other');
@@ -161,12 +146,6 @@ export function computeDashboard(
     return t != null && t >= TODAY - 30 && t <= TODAY;
   });
 
-  // inconsistency checks (reporting universe)
-  const adv = new Set(['25%', '50%', '75%', '100%']);
-  const noLead = F.filter((c) => adv.has(c.status) && !c.lead);
-  const noClose = done.filter((c) => !c.cl && !c.rs);
-  const noObj = F.filter((c) => !c.ho);
-
   // finalized-on-time (KPI)
   const compEnd = done.filter((c) => (c.cl || c.rs) && c.xc);
   const onTime = compEnd.filter((c) => (c.cl || c.rs)! <= (c.xc as number)).length;
@@ -194,28 +173,6 @@ export function computeDashboard(
   const newSet = [...recentSet].sort((a, b) => (b.cr ?? b.op)! - (a.cr ?? a.op)!);
   const newTable = newSet.map((c) => rowFrom(c, String(Math.round(TODAY - (c.cr ?? c.op)!))));
   const overdueTableFinal = overdueSet.map((c) => rowFrom(c, '+' + Math.round(TODAY - (c.xc as number))));
-
-  // no-lead table
-  const noLeadTable: NoLeadTableRow[] = noLead.map((c) => {
-    const chip = statusChipStyle(c.status);
-    return { id: c.id, desc: c.desc || '—', practice: c.practice || '—', region: c.region || '—', status: c.status, stBg: chip.bg, stFg: chip.fg };
-  });
-
-  // completeness
-  const cFields: [string, (c: TACase) => boolean][] = [
-    ['Region', (c) => !!c.region],
-    ['TA lead assigned', (c) => !!c.lead],
-    ['Expected completion', (c) => c.xc != null],
-    ['Objectives', (c) => !!c.ho],
-    ['Description', (c) => !!c.hd],
-    ['Modality', (c) => !!c.modality],
-    ['Programme offer', (c) => !!c.offer],
-  ];
-  const completeness: CompletenessRow[] = cFields.map(([label, fn]) => {
-    const p = total ? Math.round((F.filter(fn).length / total) * 100) : 0;
-    const color = p >= 95 ? '#2E7D5B' : p >= 80 ? '#3E9CD6' : '#E0A21E';
-    return { label, pct: p, pctLabel: p + '%', color };
-  });
 
   // chips + toggles
   const statusChips: StatusChip[] = STATUS_ORDER.map((v) => {
@@ -357,59 +314,6 @@ export function computeDashboard(
     { label: 'Discontinued', value: fmtNum(disc), sub: discRate.toFixed(1) + '% requests dropped', accent: '#9AA7B2', color: '#5B7186' },
   ];
 
-  // ---- Data Quality (active CO requests — same universe as the Performance view) ----
-  const dqN = F.length;
-  const m100noCl = F.filter((c) => c.status === '100%' && c.cl == null).length;
-  const clNot100 = F.filter((c) => c.cl != null && c.status !== '100%').length;
-  const badPair = F.filter((c) => c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number)).length;
-  const noTarget = F.filter((c) => c.xc == null).length;
-  const xsBeforeCr = F.filter((c) => c.xs != null && c.cr != null && (c.xs as number) < (c.cr as number) - 1).length;
-  let dupCount = 0;
-  { const seen: Record<string, 1> = {}; for (const c of F) { if (!c.reqFor || !c.desc) continue; const k = (c.reqFor + '|' + c.desc).toLowerCase(); if (seen[k]) dupCount++; else seen[k] = 1; } }
-  const activeQ = F.filter((c) => c.status !== '100%' && c.status !== 'Discontinued' && c.cl == null);
-  const stale30 = activeQ.filter((c) => c.up != null && TODAY - (c.up as number) > 30);
-  const stale60Count = activeQ.filter((c) => c.up != null && TODAY - (c.up as number) > 60).length;
-  const passes = (c: TACase) =>
-    !!(c.region && c.office && c.lead && c.desc && c.reqFor && c.offer && c.modality && c.xc != null) &&
-    !(c.status === '100%' && c.cl == null) && !(c.cl != null && c.status !== '100%') &&
-    !(c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number));
-  const passN = F.filter(passes).length;
-  const qScore = dqN ? Math.round((passN / dqN) * 100) : 0;
-
-  const regGroups = groupBy(F, 'region');
-  const qualityByRegion: QualityRegionRow[] = regGroups.map((r) => {
-    const cs = F.filter((c) => c.region === r.label);
-    const p = Math.round((cs.filter(passes).length / cs.length) * 100);
-    return { label: r.label, pct: p, pctLabel: p + '%', color: p >= 80 ? '#2E7D5B' : p >= 60 ? '#3E9CD6' : '#E0A21E' };
-  }).sort((a, b) => a.pct - b.pct);
-
-  const staleByRegion = toBars(groupBy(stale30, 'region'), '#E0A21E', 7);
-
-  const prGroups = groupBy(F.filter((c) => c.practice && c.practice !== 'Other'), 'practice').slice(0, 15);
-  const objByPractice: ObjPracticeRow[] = prGroups.map((r) => {
-    const cs = F.filter((c) => c.practice === r.label);
-    const n = cs.filter((c) => !c.ho).length;
-    const p = Math.round((n / cs.length) * 100);
-    return { label: r.label, n, pct: p, pctLabel: p + '%', color: p >= 30 ? '#C0453F' : p >= 15 ? '#E0A21E' : '#2E7D5B' };
-  }).sort((a, b) => b.pct - a.pct);
-
-  const noObjQ = F.filter((c) => !c.ho).length;
-  const dqKpis: KPI[] = [
-    { label: 'Record quality score', value: qScore + '%', sub: fmtNum(passN) + ' of ' + fmtNum(dqN) + ' records pass all checks', accent: qScore >= 80 ? '#2E7D5B' : '#E0A21E', color: qScore >= 80 ? '#2E7D5B' : qScore >= 60 ? '#E0A21E' : '#C0453F' },
-    { label: 'Contradictory records', value: fmtNum(m100noCl + clNot100), sub: 'status and close date disagree', accent: '#C0453F', color: '#C0453F' },
-    { label: 'Stale > 30 days', value: fmtNum(stale30.length), sub: 'active, but not updated in a month', accent: '#E0A21E', color: '#E0A21E' },
-    { label: 'Possible duplicates', value: fmtNum(dupCount), sub: 'same requester + description', accent: '#E0A21E', color: '#E0A21E' },
-    { label: 'No target date', value: fmtNum(noTarget), sub: 'on-time can never be measured', accent: '#C0453F', color: '#C0453F' },
-    { label: 'Missing objectives', value: dqN ? Math.round((noObjQ / dqN) * 100) + '%' : '—', sub: fmtNum(noObjQ) + ' requests, cannot be evaluated', accent: '#E0A21E', color: '#E0A21E' },
-  ];
-  const dqChecks: CheckItem[] = [
-    { n: fmtNum(m100noCl), label: 'Marked 100%, but never closed', sub: 'implementation complete, no close date recorded', color: '#C0453F' },
-    { n: fmtNum(clNot100), label: 'Closed, but status below 100%', sub: 'has a close date while still “in progress”', color: '#C0453F' },
-    { n: fmtNum(badPair), label: 'Completion target before start', sub: 'expected completion earlier than expected start', color: '#E0A21E' },
-    { n: fmtNum(noTarget), label: 'No expected completion date', sub: 'record can never be measured on-time', color: '#E0A21E' },
-  ];
-  const contradictionPct = dqN ? (((m100noCl + clNot100) / dqN) * 100).toFixed(1) + '%' : '—';
-
   const viewTabs: ToggleButton[] = ([['overview', 'Performance'], ['quality', 'Data Quality Review']] as [ViewId, string][]).map(([v, label]) => ({
     label, on: state.view === v, bg: state.view === v ? '#16385C' : '#fff', fg: state.view === v ? '#fff' : '#43586B', bd: state.view === v ? '#16385C' : '#D5DEE6',
   }));
@@ -421,13 +325,6 @@ export function computeDashboard(
     { label: 'Completed', value: pct(done.length, total) + '%', sub: fmtNum(done.length) + ' at 100%', accent: '#2E7D5B', color: '#2E7D5B' },
     { label: 'Finalized on time', value: compEnd.length ? pct(onTime, compEnd.length) + '%' : '—', sub: onTime + ' of ' + compEnd.length + ' with a target', accent: '#2E7D5B', color: '#2E7D5B' },
     { label: 'Overdue', value: fmtNum(overdueSet.length), sub: 'past target, not done', accent: '#C0453F', color: '#C0453F' },
-  ];
-
-  const checks: CheckItem[] = [
-    { n: String(noLead.length), label: 'Advanced status, no TA lead', sub: '≥25% implemented yet unassigned', color: '#C0453F' },
-    { n: String(noClose.length), label: '100% with no close date', sub: 'marked complete, never closed', color: '#E0A21E' },
-    { n: String(overdueSet.length), label: 'Active & past target date', sub: 'expected completion has passed', color: '#C0453F' },
-    { n: String(noObj.length), label: 'Missing objectives', sub: 'no objectives captured', color: '#E0A21E' },
   ];
 
   return {
@@ -490,21 +387,288 @@ export function computeDashboard(
     distinctStaff: new Set(F.filter((c) => c.lead).map((c) => c.lead)).size,
     unassigned: F.filter((c) => !c.lead).length,
 
-    dqKpis,
-    dqChecks,
-    dqTotal: fmtNum(dqN),
-    contradictionPct,
-    xsBeforeCr: fmtNum(xsBeforeCr),
-    xsBeforeCrPct: dqN ? Math.round((xsBeforeCr / dqN) * 100) + '%' : '—',
-    dupCount: fmtNum(dupCount),
-    stale60Count: fmtNum(stale60Count),
-    staleByRegion,
-    qualityByRegion,
-    objByPractice,
-    checks,
+    dq: computeDataQuality(FCO, TODAY),
+  };
+}
+
+// ===================== Stage-aware Data Quality =====================
+
+export interface DqTableRow {
+  id: string;
+  office: string;
+  region: string;
+  practice: string;
+  status: string;
+  lead: string;
+  leadColor: string;
+  metric: string;
+  metricColor: string;
+  stBg: string;
+  stFg: string;
+}
+export interface TransitionCard {
+  label: string;
+  sub: string;
+}
+
+export interface DataQuality {
+  kpis: KPI[];
+  // ① Received & in review (Unassigned · 0% · 25%)
+  setupTotal: string;
+  setupFunnel: BucketRow[];
+  setupAging: BucketRow[];
+  stalledCount: string;
+  stalledByRegion: ColoredBarRow[];
+  stalledByPractice: ColoredBarRow[];
+  stalledTable: DqTableRow[];
+  readyCount: string;
+  readyOf: string;
+  setupContradictions: CheckItem[];
+  transitionCards: TransitionCard[];
+  stallNote: string;
+  // ② Started & in delivery (50%+)
+  deliveryTotal: string;
+  completeness: CompletenessRow[];
+  deliveryScore: string;
+  deliveryScoreColor: string;
+  deliveryScoreSub: string;
+  qualityByRegion: QualityRegionRow[];
+  qualityByPractice: QualityRegionRow[];
+  deliveryFlags: CheckItem[];
+  flagCount: string;
+  flagTable: DqTableRow[];
+  dupCount: string;
+  // ③ Overdue, at-risk & closure
+  overdueCount: string;
+  overdueBuckets: BucketRow[];
+  atRiskCount: string;
+  overdueByRegion: ColoredBarRow[];
+  overdueByPractice: ColoredBarRow[];
+  overdueTable: DqTableRow[];
+  notClosedCount: string;
+  notClosedTable: DqTableRow[];
+  overdueNote: string;
+}
+
+/**
+ * Data quality read through the implementation-status lifecycle:
+ *   Setup / in review  = Unassigned · 0% · 25%  → concern is stalling
+ *   Delivery / started = 50% · 75% · 100%        → concern is completeness & consistency
+ * `co` is every Country Office request in the current filter (any status).
+ */
+function computeDataQuality(co: TACase[], today: number): DataQuality {
+  const row = (c: TACase, metric: string, metricColor: string): DqTableRow => {
+    const st = statusChipStyle(c.status);
+    return {
+      id: c.id,
+      office: c.office || '—',
+      region: c.region || '—',
+      practice: c.practice || '—',
+      status: c.status,
+      lead: c.lead || '— none —',
+      leadColor: c.lead ? '#43586B' : '#C0453F',
+      metric,
+      metricColor,
+      stBg: st.bg,
+      stFg: st.fg,
+    };
+  };
+
+  // stage populations
+  const setupSet = co.filter((c) => ['Unassigned', '0%', '25%'].includes(c.status));
+  const started = co.filter((c) => c.status === '50%' || c.status === '75%');
+  const completed = co.filter((c) => c.status === '100%');
+  const delivery = [...started, ...completed]; // 50%+ — completeness & flags apply here
+  const activeCO = co.filter((c) => c.status !== '100%' && c.status !== 'Discontinued');
+
+  // ---- ① setup / in review ----
+  const stallDays = (c: TACase) =>
+    c.status === 'Unassigned' ? Math.round(today - (c.cr ?? c.op)!) : Math.round(today - (c.up ?? c.cr ?? c.op)!);
+  const isStalled = (c: TACase) => (c.status === 'Unassigned' ? stallDays(c) > 14 : stallDays(c) > 30);
+  const stalledSetup = setupSet.filter(isStalled);
+
+  const stageColor: Record<string, string> = { Unassigned: '#E0A21E', '0%': '#9CC6E0', '25%': '#5BA3D0' };
+  const funMax = Math.max(1, ...['Unassigned', '0%', '25%'].map((s) => setupSet.filter((c) => c.status === s).length));
+  const setupFunnel: BucketRow[] = ['Unassigned', '0%', '25%'].map((s) => {
+    const n = setupSet.filter((c) => c.status === s).length;
+    return { label: s, n, color: stageColor[s], pct: Math.round((n / funMax) * 100) };
+  });
+
+  const agingDefs: [string, (d: number) => boolean, string][] = [
+    ['0–14 days', (d) => d <= 14, '#3E9CD6'],
+    ['15–30 days', (d) => d > 14 && d <= 30, '#E0A21E'],
+    ['30+ days', (d) => d > 30, '#C0453F'],
+  ];
+  const agMax = Math.max(1, ...agingDefs.map(([, t]) => setupSet.filter((c) => t(stallDays(c))).length));
+  const setupAging: BucketRow[] = agingDefs.map(([label, t, color]) => {
+    const n = setupSet.filter((c) => t(stallDays(c))).length;
+    return { label, n, color, pct: Math.round((n / agMax) * 100) };
+  });
+
+  const stalledByRegion = toBars(groupBy(stalledSetup, 'region'), '#E0A21E', 7);
+  const stalledByPractice = toBars(groupBy(stalledSetup.filter((c) => c.practice !== 'Other'), 'practice'), '#E0A21E', 15);
+  const stalledTable = [...stalledSetup]
+    .sort((a, b) => stallDays(b) - stallDays(a))
+    .slice(0, 12)
+    .map((c) => row(c, stallDays(c) + 'd', '#C0453F'));
+
+  const at25 = setupSet.filter((c) => c.status === '25%');
+  const ready = at25.filter((c) => c.ho && c.lead && c.xc != null);
+
+  const noLeadAssigned = setupSet.filter((c) => (c.status === '0%' || c.status === '25%') && !c.lead);
+  const setupContradictions: CheckItem[] = [
+    { n: fmtNum(noLeadAssigned.length), label: 'Past assignment, but no TA lead', sub: '0% or 25% means a lead should already be assigned', color: '#C0453F' },
+  ];
+
+  const transitionCards: TransitionCard[] = [
+    { label: 'Unassigned → 0%', sub: 'days to assign a TA lead' },
+    { label: '0% → 25%', sub: 'days to agree scope with the CO' },
+    { label: '25% → 50%', sub: 'days to formally start delivery' },
+  ];
+
+  const stallNote =
+    'Days stalled = today (' + formatDate(today) + ') − last Updated date (for Unassigned, − the date received). ' +
+    'Stage-transition dates are not captured yet, so this is a proxy for time in the current stage.';
+
+  // ---- ② started & in delivery (50%+) ----
+  const delN = delivery.length;
+  const cFields: [string, (c: TACase) => boolean][] = [
+    ['Objectives', (c) => !!c.ho],
+    ['TA lead', (c) => !!c.lead],
+    ['Expected completion', (c) => c.xc != null],
+    ['Description', (c) => !!c.hd],
+    ['Modality', (c) => !!c.modality],
+    ['Programme offer', (c) => !!c.offer],
+  ];
+  const completeness: CompletenessRow[] = cFields.map(([label, fn]) => {
+    const p = delN ? Math.round((delivery.filter(fn).length / delN) * 100) : 0;
+    const color = p >= 95 ? '#2E7D5B' : p >= 80 ? '#3E9CD6' : '#E0A21E';
+    return { label, pct: p, pctLabel: p + '%', color };
+  });
+
+  const passes = (c: TACase) =>
+    !!(c.ho && c.lead && c.xc != null && c.hd && c.modality && c.offer) &&
+    !(c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number));
+  const passN = delivery.filter(passes).length;
+  const score = delN ? Math.round((passN / delN) * 100) : 0;
+
+  const qColor = (p: number) => (p >= 80 ? '#2E7D5B' : p >= 60 ? '#3E9CD6' : '#E0A21E');
+  const qualityByRegion: QualityRegionRow[] = groupBy(delivery, 'region')
+    .map((r) => {
+      const cs = delivery.filter((c) => c.region === r.label);
+      const p = Math.round((cs.filter(passes).length / cs.length) * 100);
+      return { label: r.label, pct: p, pctLabel: p + '%', color: qColor(p) };
+    })
+    .sort((a, b) => a.pct - b.pct);
+  const qualityByPractice: QualityRegionRow[] = groupBy(delivery.filter((c) => c.practice !== 'Other'), 'practice')
+    .slice(0, 15)
+    .map((r) => {
+      const cs = delivery.filter((c) => c.practice === r.label);
+      const p = Math.round((cs.filter(passes).length / cs.length) * 100);
+      return { label: r.label, pct: p, pctLabel: p + '%', color: qColor(p) };
+    })
+    .sort((a, b) => a.pct - b.pct);
+
+  const deliveryFlags: CheckItem[] = [
+    { n: fmtNum(delivery.filter((c) => !c.ho).length), label: 'Missing objectives', sub: 'work has started but objectives were never captured', color: '#C0453F' },
+    { n: fmtNum(delivery.filter((c) => !c.lead).length), label: 'No TA lead', sub: 'in delivery yet unassigned', color: '#C0453F' },
+    { n: fmtNum(delivery.filter((c) => c.xc == null).length), label: 'No expected completion date', sub: 'timeliness can never be measured', color: '#C0453F' },
+    { n: fmtNum(delivery.filter((c) => c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number)).length), label: 'Completion target before start', sub: 'expected completion earlier than expected start', color: '#E0A21E' },
+  ];
+
+  const reason = (c: TACase): string =>
+    !c.ho ? 'no objectives'
+      : !c.lead ? 'no TA lead'
+      : c.xc == null ? 'no target date'
+      : !c.hd ? 'no description'
+      : !c.modality ? 'no modality'
+      : !c.offer ? 'no offer'
+      : c.xs != null && (c.xc as number) < (c.xs as number) ? 'target before start'
+      : 'ok';
+  const flagRecords = delivery.filter((c) => !passes(c));
+  const flagTable = flagRecords.slice(0, 12).map((c) => row(c, reason(c), '#C0453F'));
+
+  let dupCount = 0;
+  {
+    const seen: Record<string, 1> = {};
+    for (const c of co) {
+      if (!c.reqFor || !c.desc) continue;
+      const k = (c.reqFor + '|' + c.desc).toLowerCase();
+      if (seen[k]) dupCount++;
+      else seen[k] = 1;
+    }
+  }
+
+  // ---- ③ overdue, at-risk & closure ----
+  const overdueSet = activeCO
+    .filter((c) => c.xc != null && (c.xc as number) < today)
+    .sort((a, b) => today - (b.xc as number) - (today - (a.xc as number)));
+  const o1 = overdueSet.filter((c) => today - (c.xc as number) <= 30).length;
+  const o2 = overdueSet.filter((c) => { const d = today - (c.xc as number); return d > 30 && d <= 60; }).length;
+  const o3 = overdueSet.filter((c) => today - (c.xc as number) > 60).length;
+  const obMax = Math.max(1, o1, o2, o3);
+  const overdueBuckets: BucketRow[] = [
+    { label: '1–30 days', n: o1, color: '#E0A21E' },
+    { label: '31–60 days', n: o2, color: '#CD6A2E' },
+    { label: '>60 days', n: o3, color: '#C0453F' },
+  ].map((b) => ({ ...b, pct: Math.round((b.n / obMax) * 100) }));
+  const atRisk = activeCO.filter((c) => c.xc != null && (c.xc as number) >= today && (c.xc as number) <= today + 30);
+  const overdueByRegion = toBars(groupBy(overdueSet, 'region'), '#C0453F', 7);
+  const overdueByPractice = toBars(groupBy(overdueSet.filter((c) => c.practice !== 'Other'), 'practice'), '#C0453F', 15);
+  const overdueTable = overdueSet.slice(0, 12).map((c) => row(c, '+' + Math.round(today - (c.xc as number)) + 'd', '#C0453F'));
+
+  const notClosed = co.filter((c) => (c.status === '100%' || c.status === 'Discontinued') && !c.cl);
+  const notClosedTable = notClosed.slice(0, 12).map((c) => row(c, c.status === '100%' ? 'completed' : 'discontinued', '#E0A21E'));
+
+  const overdueNote =
+    'Days overdue = today (' + formatDate(today) + ') − Expected Completion Date. ' +
+    'If this looks too high, the TA lead should update the Expected Completion Date on the request.';
+
+  // ---- KPIs (stage-aware) ----
+  const unassignedN = setupSet.filter((c) => c.status === 'Unassigned').length;
+  const inSetupN = setupSet.filter((c) => c.status !== 'Unassigned').length;
+  const kpis: KPI[] = [
+    { label: 'Awaiting assignment', value: fmtNum(unassignedN), sub: 'unassigned CO requests', accent: '#E0A21E', color: '#0F2238' },
+    { label: 'In setup (0–25%)', value: fmtNum(inSetupN), sub: 'being scoped with the CO', accent: '#5BA3D0', color: '#0F2238' },
+    { label: 'Stalled in setup', value: fmtNum(stalledSetup.length), sub: 'stuck past the threshold', accent: '#C0453F', color: '#C0453F' },
+    { label: 'In delivery (50%+)', value: fmtNum(started.length), sub: 'work has started', accent: '#0B6FA4', color: '#0F2238' },
+    { label: 'Needing cleanup', value: fmtNum(flagRecords.length), sub: '50%+ with a data flag', accent: '#C0453F', color: '#C0453F' },
+    { label: 'Overdue', value: fmtNum(overdueSet.length), sub: 'active past target date', accent: '#C0453F', color: '#C0453F' },
+  ];
+
+  return {
+    kpis,
+    setupTotal: fmtNum(setupSet.length),
+    setupFunnel,
+    setupAging,
+    stalledCount: fmtNum(stalledSetup.length),
+    stalledByRegion,
+    stalledByPractice,
+    stalledTable,
+    readyCount: fmtNum(ready.length),
+    readyOf: fmtNum(at25.length),
+    setupContradictions,
+    transitionCards,
+    stallNote,
+    deliveryTotal: fmtNum(delN),
     completeness,
-    noLeadCount: noLead.length,
-    noLeadTable,
-    noLeadEmpty: noLead.length === 0,
+    deliveryScore: score + '%',
+    deliveryScoreColor: score >= 80 ? '#2E7D5B' : score >= 60 ? '#E0A21E' : '#C0453F',
+    deliveryScoreSub: fmtNum(passN) + ' of ' + fmtNum(delN) + ' pass every check',
+    qualityByRegion,
+    qualityByPractice,
+    deliveryFlags,
+    flagCount: fmtNum(flagRecords.length),
+    flagTable,
+    dupCount: fmtNum(dupCount),
+    overdueCount: fmtNum(overdueSet.length),
+    overdueBuckets,
+    atRiskCount: fmtNum(atRisk.length),
+    overdueByRegion,
+    overdueByPractice,
+    overdueTable,
+    notClosedCount: fmtNum(notClosed.length),
+    notClosedTable,
+    overdueNote,
   };
 }
