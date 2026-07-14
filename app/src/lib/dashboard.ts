@@ -445,7 +445,12 @@ export function computeDashboard(
     quarterChips,
     regionOpts: optionCounts(cases, 'region').map(([v, n]) => ({ value: v, label: `${v} (${n})` })),
     practiceOpts: optionCounts(cases, 'practice').map(([v, n]) => ({ value: v, label: `${v} (${n})` })),
-    officeOpts: optionCounts(cases, 'office').map(([v, n]) => ({ value: v, label: `${v} (${n})` })),
+    // Country options are scoped to the selected region so the list only shows
+    // countries within that region.
+    officeOpts: optionCounts(
+      state.regions.length ? cases.filter((c) => state.regions.includes(c.region)) : cases,
+      'office',
+    ).map(([v, n]) => ({ value: v, label: `${v} (${n})` })),
 
     kpis,
     ioMonths,

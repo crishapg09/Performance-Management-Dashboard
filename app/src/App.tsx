@@ -17,7 +17,8 @@ function App() {
 
   const onView = (label: string) => setFilters((f) => ({ ...f, view: VIEW_BY_LABEL[label] ?? 'overview' }));
   const setType = (v: string) => setFilters((f) => ({ ...f, type: v }));
-  const onRegion = (v: string) => setFilters((f) => ({ ...f, regions: v === 'All' ? [] : [v] }));
+  const onRegion = (v: string) =>
+    setFilters((f) => ({ ...f, regions: v === 'All' ? [] : [v], office: 'All' }));
   const onPractice = (v: string) => setFilters((f) => ({ ...f, practice: v }));
   const onOffice = (v: string) => setFilters((f) => ({ ...f, office: v }));
   const onToggleStatus = (v: string) =>
