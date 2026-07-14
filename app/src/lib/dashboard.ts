@@ -334,14 +334,18 @@ export function computeDashboard(
   const closed30 = F.filter((c) => c.cl != null && (c.cl as number) >= TODAY - 30 && (c.cl as number) <= TODAY).length;
 
   // full-export match for discontinued + data quality
+  // Full export in the current filter — used only to source the discontinued
+  // rate and the "no country office assigned" (blank) count.
   const FQ = rawCases.filter((c) => matchesFilters(c, state));
-  const disc = FQ.filter((c) => c.status === 'Discontinued').length;
-  const discRate = FQ.length ? (disc / FQ.length) * 100 : 0;
-
-  // Data Quality corner note: of everything reviewed, how many come from a real
-  // Country Office vs. how many have no country office assigned (blank).
   const REAL_REGIONS = new Set(['ESAR', 'APR', 'WCAR', 'LACR', 'ECAR', 'MENAR']);
-  const coFromN = FQ.filter((c) => REAL_REGIONS.has(c.region)).length;
+  // All Country Office requests (any status) — basis for the discontinued rate.
+  const FCO = FQ.filter((c) => REAL_REGIONS.has(c.region));
+  const disc = FCO.filter((c) => c.status === 'Discontinued').length;
+  const discRate = FCO.length ? (disc / FCO.length) * 100 : 0;
+
+  // Data Quality corner note: active CO requests (= the Performance universe)
+  // vs. requests with no country office assigned (blank).
+  const coFromN = F.length;
   const coUnassignedN = FQ.filter((c) => !c.office).length;
 
   const mgmtKpis: KPI[] = [
@@ -353,43 +357,43 @@ export function computeDashboard(
     { label: 'Discontinued', value: fmtNum(disc), sub: discRate.toFixed(1) + '% requests dropped', accent: '#9AA7B2', color: '#5B7186' },
   ];
 
-  // ---- Data Quality (full export) ----
-  const dqN = FQ.length;
-  const m100noCl = FQ.filter((c) => c.status === '100%' && c.cl == null).length;
-  const clNot100 = FQ.filter((c) => c.cl != null && c.status !== '100%').length;
-  const badPair = FQ.filter((c) => c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number)).length;
-  const noTarget = FQ.filter((c) => c.xc == null).length;
-  const xsBeforeCr = FQ.filter((c) => c.xs != null && c.cr != null && (c.xs as number) < (c.cr as number) - 1).length;
+  // ---- Data Quality (active CO requests — same universe as the Performance view) ----
+  const dqN = F.length;
+  const m100noCl = F.filter((c) => c.status === '100%' && c.cl == null).length;
+  const clNot100 = F.filter((c) => c.cl != null && c.status !== '100%').length;
+  const badPair = F.filter((c) => c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number)).length;
+  const noTarget = F.filter((c) => c.xc == null).length;
+  const xsBeforeCr = F.filter((c) => c.xs != null && c.cr != null && (c.xs as number) < (c.cr as number) - 1).length;
   let dupCount = 0;
-  { const seen: Record<string, 1> = {}; for (const c of FQ) { if (!c.reqFor || !c.desc) continue; const k = (c.reqFor + '|' + c.desc).toLowerCase(); if (seen[k]) dupCount++; else seen[k] = 1; } }
-  const activeQ = FQ.filter((c) => c.status !== '100%' && c.status !== 'Discontinued' && c.cl == null);
+  { const seen: Record<string, 1> = {}; for (const c of F) { if (!c.reqFor || !c.desc) continue; const k = (c.reqFor + '|' + c.desc).toLowerCase(); if (seen[k]) dupCount++; else seen[k] = 1; } }
+  const activeQ = F.filter((c) => c.status !== '100%' && c.status !== 'Discontinued' && c.cl == null);
   const stale30 = activeQ.filter((c) => c.up != null && TODAY - (c.up as number) > 30);
   const stale60Count = activeQ.filter((c) => c.up != null && TODAY - (c.up as number) > 60).length;
   const passes = (c: TACase) =>
     !!(c.region && c.office && c.lead && c.desc && c.reqFor && c.offer && c.modality && c.xc != null) &&
     !(c.status === '100%' && c.cl == null) && !(c.cl != null && c.status !== '100%') &&
     !(c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number));
-  const passN = FQ.filter(passes).length;
+  const passN = F.filter(passes).length;
   const qScore = dqN ? Math.round((passN / dqN) * 100) : 0;
 
-  const regGroups = groupBy(FQ.filter((c) => c.region && c.region !== 'HQ'), 'region');
+  const regGroups = groupBy(F, 'region');
   const qualityByRegion: QualityRegionRow[] = regGroups.map((r) => {
-    const cs = FQ.filter((c) => c.region === r.label);
+    const cs = F.filter((c) => c.region === r.label);
     const p = Math.round((cs.filter(passes).length / cs.length) * 100);
     return { label: r.label, pct: p, pctLabel: p + '%', color: p >= 80 ? '#2E7D5B' : p >= 60 ? '#3E9CD6' : '#E0A21E' };
   }).sort((a, b) => a.pct - b.pct);
 
   const staleByRegion = toBars(groupBy(stale30, 'region'), '#E0A21E', 7);
 
-  const prGroups = groupBy(FQ.filter((c) => c.practice && c.practice !== 'Other'), 'practice').slice(0, 15);
+  const prGroups = groupBy(F.filter((c) => c.practice && c.practice !== 'Other'), 'practice').slice(0, 15);
   const objByPractice: ObjPracticeRow[] = prGroups.map((r) => {
-    const cs = FQ.filter((c) => c.practice === r.label);
+    const cs = F.filter((c) => c.practice === r.label);
     const n = cs.filter((c) => !c.ho).length;
     const p = Math.round((n / cs.length) * 100);
     return { label: r.label, n, pct: p, pctLabel: p + '%', color: p >= 30 ? '#C0453F' : p >= 15 ? '#E0A21E' : '#2E7D5B' };
   }).sort((a, b) => b.pct - a.pct);
 
-  const noObjQ = FQ.filter((c) => !c.ho).length;
+  const noObjQ = F.filter((c) => !c.ho).length;
   const dqKpis: KPI[] = [
     { label: 'Record quality score', value: qScore + '%', sub: fmtNum(passN) + ' of ' + fmtNum(dqN) + ' records pass all checks', accent: qScore >= 80 ? '#2E7D5B' : '#E0A21E', color: qScore >= 80 ? '#2E7D5B' : qScore >= 60 ? '#E0A21E' : '#C0453F' },
     { label: 'Contradictory records', value: fmtNum(m100noCl + clNot100), sub: 'status and close date disagree', accent: '#C0453F', color: '#C0453F' },

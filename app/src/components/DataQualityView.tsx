@@ -53,7 +53,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       <div style={{ background: '#EEF6FB', border: '1px solid #CFE6F2', borderRadius: 10, padding: '13px 18px', marginTop: 14, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#1CABE2', color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>i</div>
         <div style={{ fontSize: 12.5, color: '#2C5A75', lineHeight: 1.55 }}>
-          This view checks <strong>every record in the export</strong> ({d.dqTotal} in current filter), including discontinued and HQ requests that other views exclude. A record &ldquo;passes&rdquo; when all core fields are filled and its status and dates do not contradict each other.
+          This view checks the <strong>{d.dqTotal} active Country Office requests</strong> in the current filter (a further <strong>{d.coUnassigned}</strong> have no country office assigned — see the header). A record &ldquo;passes&rdquo; when all core fields are filled and its status and dates do not contradict each other.
         </div>
       </div>
 
