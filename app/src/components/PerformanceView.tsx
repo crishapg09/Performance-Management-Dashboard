@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Dashboard, StackedRow } from '../lib/dashboard';
 import { Card } from './Card';
+import { SectionHeading } from './SectionHeading';
 import { KpiStrip } from './KpiStrip';
 import { BarList } from './BarList';
 
@@ -182,6 +183,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       {tab === 'demand' && (
       <>
       {/* ===== SECTION 1: DEMAND & STATUS ===== */}
+      <SectionHeading n={1} title="Demand, delivery & status" />
 
       {/* opened vs completed vs closed by month */}
       <Card>
@@ -252,6 +254,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       {tab === 'cycle' && (
       <>
       {/* ===== SECTION 2: CYCLE TIME ===== */}
+      <SectionHeading n={2} title="Cycle time: opening, response time and closure" />
       <KpiStrip kpis={d.mgmtKpis} />
 
       <Card style={{ marginTop: 16 }}>
@@ -268,6 +271,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       {tab === 'overdue' && (
       <>
       {/* ===== SECTION 3: OVERDUE REQUESTS ===== */}
+      <SectionHeading n={3} title="Overdue requests" />
       <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
         <Hero bg="#FBF0EF" border="#F0D2CF" labelColor="#B0453F" value={d.overdue} valueColor="#C0453F" label="Should be closed by now" body="active requests are past their expected completion date but not yet at 100%." bodyColor="#8A5450" />
         <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
@@ -328,6 +332,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       {tab === 'workload' && (
       <>
       {/* ===== SECTION 4: WORKLOAD ===== */}
+      <SectionHeading n={4} title="Workload: practices, regions & staff" bg="#16385C" />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
         <SolidWorkloadCard title="Requests by region" rows={d.byRegion} labelW={80} />
         <SolidWorkloadCard title="Requests by practice" rows={d.byPractice} labelW={150} />
