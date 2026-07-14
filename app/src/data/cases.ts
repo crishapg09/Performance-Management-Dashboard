@@ -17,12 +17,14 @@ export const RAW_CASES = (rawCases as unknown as TACase[]).map((c) => {
 });
 
 /**
- * The reporting universe for the Performance view: everything except HQ offices
- * and Discontinued requests. Blank-region records are no longer excluded — their
- * region is corrected from the office (or bucketed as "Unmapped"). The Data
- * Quality view uses RAW_CASES (the full export).
+ * The reporting universe for the Performance view: excludes HQ offices,
+ * Discontinued requests, and "Unmapped" offices (regional/HQ divisions and
+ * blank offices the reference doesn't cover). The Data Quality view uses
+ * RAW_CASES (the full export), so nothing is hidden there.
  */
-export const CASES = RAW_CASES.filter((c) => c.region !== 'HQ' && c.status !== 'Discontinued');
+export const CASES = RAW_CASES.filter(
+  (c) => c.region !== 'HQ' && c.region !== 'Unmapped' && c.status !== 'Discontinued',
+);
 
 /** Selectable expected-completion quarters (2026, ascending). */
 export const QUARTERS = [...new Set(CASES.map((c) => c.q).filter(Boolean))]

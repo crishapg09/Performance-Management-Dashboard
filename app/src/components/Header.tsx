@@ -1,8 +1,11 @@
 interface HeaderProps {
   metaTotal: string;
+  isQuality: boolean;
+  coFrom: string;
+  coUnassigned: string;
 }
 
-export function Header({ metaTotal }: HeaderProps) {
+export function Header({ metaTotal, isQuality, coFrom, coUnassigned }: HeaderProps) {
   return (
     <div style={{ maxWidth: 1340, margin: '0 auto', padding: '0 24px' }}>
       <div
@@ -24,9 +27,16 @@ export function Header({ metaTotal }: HeaderProps) {
           </div>
         </div>
         <div style={{ textAlign: 'right', fontSize: 12, color: '#5B7186', lineHeight: 1.6 }}>
-          <div>
-            <span style={{ fontWeight: 700, color: '#0F2238' }}>{metaTotal}</span> requests in source
-          </div>
+          {isQuality ? (
+            <div>
+              <span style={{ fontWeight: 700, color: '#0F2238' }}>{coFrom}</span> from COs &middot;{' '}
+              <span style={{ fontWeight: 700, color: '#0F2238' }}>{coUnassigned}</span> with no CO assigned
+            </div>
+          ) : (
+            <div>
+              <span style={{ fontWeight: 700, color: '#0F2238' }}>{metaTotal}</span> CO requests in source
+            </div>
+          )}
           <div>Created Jan&ndash;Jul 2026 &middot; as of 14 Jul 2026</div>
         </div>
       </div>

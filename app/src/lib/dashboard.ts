@@ -64,6 +64,8 @@ export interface Dashboard {
   viewTabs: ToggleButton[];
 
   metaTotal: string;
+  coFrom: string;
+  coUnassigned: string;
   filterTitle: string;
   total: string;
   pctOfAll: string;
@@ -336,6 +338,12 @@ export function computeDashboard(
   const disc = FQ.filter((c) => c.status === 'Discontinued').length;
   const discRate = FQ.length ? (disc / FQ.length) * 100 : 0;
 
+  // Data Quality corner note: of everything reviewed, how many come from a real
+  // Country Office vs. how many have no country office assigned (blank).
+  const REAL_REGIONS = new Set(['ESAR', 'APR', 'WCAR', 'LACR', 'ECAR', 'MENAR']);
+  const coFromN = FQ.filter((c) => REAL_REGIONS.has(c.region)).length;
+  const coUnassignedN = FQ.filter((c) => !c.office).length;
+
   const mgmtKpis: KPI[] = [
     { label: 'Open → assignment', value: 'N/A', sub: 'measure coming soon', accent: '#9AA7B2', color: '#9AA7B2' },
     { label: 'Assignment → first response', value: 'N/A', sub: 'measure coming soon', accent: '#9AA7B2', color: '#9AA7B2' },
@@ -423,6 +431,8 @@ export function computeDashboard(
     isQuality: state.view === 'quality',
     viewTabs,
     metaTotal: fmtNum(ALL),
+    coFrom: fmtNum(coFromN),
+    coUnassigned: fmtNum(coUnassignedN),
     filterTitle,
     total: fmtNum(total),
     pctOfAll: pct(total, ALL) + '%',
