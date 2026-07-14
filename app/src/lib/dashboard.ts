@@ -45,7 +45,7 @@ export interface StatusChip { label: string; dot: string; on: boolean; bg: strin
 export interface ToggleButton { label: string; on: boolean; bg: string; fg: string; bd?: string; }
 export interface StackSeg { w: number; color: string; }
 export interface StackedRow { label: string; n: number; barPct: number; segs: StackSeg[]; leads?: number; }
-export interface MonthBar { label: string; in: number; done: number; out: number; inH: number; doneH: number; outH: number; hasNote: boolean; }
+export interface MonthBar { label: string; in: number; done: number; inH: number; doneH: number; hasNote: boolean; }
 export interface BucketRow { label: string; n: number; color: string; pct: number; }
 export interface LegendItem { label: string; color: string; }
 export interface OverdueTableRow {
@@ -80,7 +80,6 @@ export interface Dashboard {
   ioMonths: MonthBar[];
   ioOpenedTotal: string;
   ioCompletedTotal: string;
-  ioClosedTotal: string;
   recent: number;
   recentByRegion: ColoredBarRow[];
   recentByPractice: ColoredBarRow[];
@@ -283,24 +282,22 @@ export function computeDashboard(
   const span = Math.max(1, loadMax - loadMin);
   const avgPos = ((loadAvgNum - loadMin) / span) * 100;
 
-  // opened vs completed vs closed by month (Apr–Jul)
-  const io: { label: string; opened: number; completedN: number; closedN: number }[] = [];
+  // opened vs completed by month (Apr–Jul)
+  const io: { label: string; opened: number; completedN: number }[] = [];
   for (let i = 3; i <= 6; i++) {
     io.push({
       label: MONTHS[i],
       opened: F.filter((c) => monthIndex2026(c.op) === i).length,
       completedN: F.filter((c) => c.status === '100%' && monthIndex2026(c.cl != null ? c.cl : c.rs) === i).length,
-      closedN: F.filter((c) => c.cl != null && monthIndex2026(c.cl) === i).length,
     });
   }
-  const ioMax = Math.max(1, ...io.map((m) => Math.max(m.opened, m.completedN, m.closedN)));
+  const ioMax = Math.max(1, ...io.map((m) => Math.max(m.opened, m.completedN)));
   const ioMonths: MonthBar[] = io.map((m) => ({
-    label: m.label, in: m.opened, done: m.completedN, out: m.closedN, hasNote: m.label === 'Apr',
-    inH: Math.round((m.opened / ioMax) * 140), doneH: Math.round((m.completedN / ioMax) * 140), outH: Math.round((m.closedN / ioMax) * 140),
+    label: m.label, in: m.opened, done: m.completedN, hasNote: m.label === 'Apr',
+    inH: Math.round((m.opened / ioMax) * 140), doneH: Math.round((m.completedN / ioMax) * 140),
   }));
   const ioOpenedTotal = fmtNum(io.reduce((s, m) => s + m.opened, 0));
   const ioCompletedTotal = fmtNum(io.reduce((s, m) => s + m.completedN, 0));
-  const ioClosedTotal = fmtNum(io.reduce((s, m) => s + m.closedN, 0));
 
   // overdue severity buckets
   const over1_30 = overdueSet.filter((c) => TODAY - (c.xc as number) <= 30).length;
@@ -407,7 +404,7 @@ export function computeDashboard(
 
   const kpis: KPI[] = [
     { label: 'Total requests', value: fmtNum(total), sub: 'in current filter', accent: '#0B6FA4', color: '#0F2238' },
-    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: 'new since 11 Jun 2026', accent: '#1CABE2', color: '#0F2238' },
+    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: 'new since 14 Jun 2026', accent: '#1CABE2', color: '#0F2238' },
     { label: 'Active & on track', value: fmtNum(onTrack), sub: 'in progress, not overdue', accent: '#3E9CD6', color: '#3E9CD6' },
     { label: 'Completed', value: pct(done.length, total) + '%', sub: fmtNum(done.length) + ' at 100%', accent: '#2E7D5B', color: '#2E7D5B' },
     { label: 'Finalized on time', value: compEnd.length ? pct(onTime, compEnd.length) + '%' : '—', sub: onTime + ' of ' + compEnd.length + ' with a target', accent: '#2E7D5B', color: '#2E7D5B' },
@@ -440,7 +437,6 @@ export function computeDashboard(
     ioMonths,
     ioOpenedTotal,
     ioCompletedTotal,
-    ioClosedTotal,
     recent: recentSet.length,
     recentByRegion: toBars(groupBy(recentSet, 'region'), '#0B6FA4', 7),
     recentByPractice: toBars(groupBy(recentSet.filter((c) => c.practice !== 'Other'), 'practice'), '#0B6FA4', 15),

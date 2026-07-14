@@ -149,11 +149,10 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       {/* opened vs completed vs closed by month */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
-          <div style={bigCardTitle}>Requests opened vs. completed vs. closed, by month (2026)</div>
+          <div style={bigCardTitle}>Requests opened vs. completed, by month (2026)</div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 11, height: 11, borderRadius: 3, background: '#0B6FA4' }} /><span style={{ fontSize: 11.5, color: '#43586B' }}>Opened</span></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 11, height: 11, borderRadius: 3, background: '#2E7D5B' }} /><span style={{ fontSize: 11.5, color: '#43586B' }}>Completed</span></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 11, height: 11, borderRadius: 3, background: '#004C45' }} /><span style={{ fontSize: 11.5, color: '#43586B' }}>Closed</span></div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, padding: '0 6px' }}>
@@ -171,23 +170,19 @@ export function PerformanceView({ d }: { d: Dashboard }) {
                   <div style={{ fontSize: 10.5, fontWeight: 700, color: '#2E7D5B', fontVariantNumeric: 'tabular-nums' }}>{m.done}</div>
                   <div style={{ width: 26, height: m.doneH, minHeight: 2, background: '#2E7D5B', borderRadius: '4px 4px 0 0' }} />
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#004C45', fontVariantNumeric: 'tabular-nums' }}>{m.out}</div>
-                  <div style={{ width: 26, height: m.outH, minHeight: 2, background: '#004C45', borderRadius: '4px 4px 0 0' }} />
-                </div>
               </div>
               <div style={{ fontSize: 11.5, color: '#5B7186', fontWeight: 600 }}>{m.label}</div>
             </div>
           ))}
         </div>
         <div style={whatSays}>
-          <strong style={{ color: '#5B7186' }}>What this says:</strong> every month the blue bar (new demand) towers over the green bar (closed work), the active backlog grows. In the current filter, <strong style={{ color: '#0B6FA4' }}>{d.ioOpenedTotal}</strong> requests were opened since April, <strong style={{ color: '#2E7D5B' }}>{d.ioCompletedTotal}</strong> reached 100%, and <strong style={{ color: '#004C45' }}>{d.ioClosedTotal}</strong> were closed.
+          <strong style={{ color: '#5B7186' }}>What this says:</strong> every month the blue bar (new demand) towers over the green bar (completed work), the active backlog grows. In the current filter, <strong style={{ color: '#0B6FA4' }}>{d.ioOpenedTotal}</strong> requests were opened since April and <strong style={{ color: '#2E7D5B' }}>{d.ioCompletedTotal}</strong> reached 100%.
         </div>
       </Card>
 
       {/* received last 30 days */}
       <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1fr 1fr', gap: 16, marginTop: 16, alignItems: 'start' }}>
-        <Hero bg="#EAF2F8" border="#CFE0EE" labelColor="#0B6FA4" value={d.recent} valueColor="#0B6FA4" label="Received in last 30 days" body="new TA requests opened between 11 Jun and 11 Jul 2026." bodyColor="#3E6178" />
+        <Hero bg="#EAF2F8" border="#CFE0EE" labelColor="#0B6FA4" value={d.recent} valueColor="#0B6FA4" label="Received in last 30 days" body="new TA requests opened between 14 Jun and 14 Jul 2026." bodyColor="#3E6178" />
         <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
           <div style={cardTitle}>New by region</div>
           <BarList rows={d.recentByRegion} labelWidth={64} trackBg="#E9F0F6" />
@@ -280,7 +275,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
         rows={d.overdueTableFinal}
         metricLabel="Days over"
         daysColor="#C0453F"
-        footer="Days over = today (11 Jul 2026) − the request’s Expected Completion Date, counting only active requests (implementation status below 100%) whose target date has already passed."
+        footer="Days over = today (14 Jul 2026) − the request’s Expected Completion Date, counting only active requests (implementation status below 100%) whose target date has already passed."
       />
 
       {/* ===== SECTION 4: WORKLOAD ===== */}
