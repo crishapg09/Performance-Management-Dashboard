@@ -1,8 +1,16 @@
+import { useState } from 'react';
 import type { Dashboard, StackedRow } from '../lib/dashboard';
 import { Card } from './Card';
-import { SectionHeading } from './SectionHeading';
 import { KpiStrip } from './KpiStrip';
 import { BarList } from './BarList';
+
+const SUBTABS = [
+  { id: 'demand', label: 'Demand & delivery' },
+  { id: 'cycle', label: 'Cycle time' },
+  { id: 'overdue', label: 'Overdue requests' },
+  { id: 'workload', label: 'Workload' },
+] as const;
+type SubTab = (typeof SUBTABS)[number]['id'];
 
 const cardTitle: React.CSSProperties = { fontSize: 13, fontWeight: 700, marginBottom: 14 };
 const bigCardTitle: React.CSSProperties = { fontSize: 13.5, fontWeight: 700 };
@@ -139,12 +147,41 @@ function StalledCard({ title, rows, legend, labelW }: { title: string; rows: Sta
 }
 
 export function PerformanceView({ d }: { d: Dashboard }) {
+  const [tab, setTab] = useState<SubTab>('demand');
   return (
     <>
       <KpiStrip kpis={d.kpis} />
 
+      {/* Sub-tab bar */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #DCE3EA', margin: '26px 0 6px', flexWrap: 'wrap' }}>
+        {SUBTABS.map((t) => {
+          const on = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 16.5,
+                fontWeight: 700,
+                padding: '12px 20px',
+                color: on ? '#0B5A8A' : '#5B7186',
+                borderBottom: on ? '3px solid #0B5A8A' : '3px solid transparent',
+                marginBottom: -1,
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === 'demand' && (
+      <>
       {/* ===== SECTION 1: DEMAND & STATUS ===== */}
-      <SectionHeading n={1} title="Demand, delivery & status" />
 
       {/* opened vs completed vs closed by month */}
       <Card>
@@ -209,8 +246,12 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       {/* newest requests table */}
       <RequestTable title="Newest requests (last 30 days)" rows={d.newTable} metricLabel="Age (days)" daysColor="#0B6FA4" />
 
+      </>
+      )}
+
+      {tab === 'cycle' && (
+      <>
       {/* ===== SECTION 2: CYCLE TIME ===== */}
-      <SectionHeading n={2} title="Cycle time: opening, response time and closure" />
       <KpiStrip kpis={d.mgmtKpis} />
 
       <Card style={{ marginTop: 16 }}>
@@ -221,9 +262,12 @@ export function PerformanceView({ d }: { d: Dashboard }) {
         <div style={{ fontSize: 12.5, color: '#9AA7B2' }}>This measure requires an assignment date, which is not yet captured at source. Space reserved here for when that data becomes available.</div>
       </Card>
 
-      {/* ===== SECTION 3: OVERDUE REQUESTS ===== */}
-      <SectionHeading n={3} title="Overdue requests" />
+      </>
+      )}
 
+      {tab === 'overdue' && (
+      <>
+      {/* ===== SECTION 3: OVERDUE REQUESTS ===== */}
       <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
         <Hero bg="#FBF0EF" border="#F0D2CF" labelColor="#B0453F" value={d.overdue} valueColor="#C0453F" label="Should be closed by now" body="active requests are past their expected completion date but not yet at 100%." bodyColor="#8A5450" />
         <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
@@ -278,8 +322,12 @@ export function PerformanceView({ d }: { d: Dashboard }) {
         footer="Days over = today (14 Jul 2026) − the request’s Expected Completion Date, counting only active requests (implementation status below 100%) whose target date has already passed."
       />
 
+      </>
+      )}
+
+      {tab === 'workload' && (
+      <>
       {/* ===== SECTION 4: WORKLOAD ===== */}
-      <SectionHeading n={4} title="Workload: practices, regions & staff" bg="#16385C" />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
         <SolidWorkloadCard title="Requests by region" rows={d.byRegion} labelW={80} />
         <SolidWorkloadCard title="Requests by practice" rows={d.byPractice} labelW={150} />
@@ -342,6 +390,8 @@ export function PerformanceView({ d }: { d: Dashboard }) {
           ))}
         </div>
       </Card>
+      </>
+      )}
     </>
   );
 }
