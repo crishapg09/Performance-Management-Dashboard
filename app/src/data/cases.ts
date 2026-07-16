@@ -5,7 +5,7 @@ import { quarter } from '../lib/dates';
 import { mapOffice } from '../lib/regionMap';
 
 /**
- * Source: UNICEF TA case export, Jan–Jul 2026 (4,485 rows, as of 14 Jul 2026).
+ * Source: UNICEF TA case export, Jan–Jul 2026 (4,526 rows, as of 16 Jul 2026).
  * Dates are Excel serial day numbers (matches the source export).
  * Each record's office and region are corrected via the Regions & Countries
  * reference (see lib/regionMap), and annotated with its expected-completion
