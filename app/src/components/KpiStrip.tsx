@@ -2,7 +2,7 @@ import type { KPI } from '../lib/dashboard';
 
 export function KpiStrip({ kpis }: { kpis: KPI[] }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 12, marginTop: 8 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: 12, marginTop: 8 }}>
       {kpis.map((k) => (
         <div
           key={k.label}

@@ -194,7 +194,8 @@ export function PerformanceView({ d }: { d: Dashboard }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 11, height: 11, borderRadius: 3, background: '#2E7D5B' }} /><span style={{ fontSize: 11.5, color: '#43586B' }}>Completed</span></div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, padding: '0 6px' }}>
+        <div style={{ overflowX: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, padding: '0 6px', minWidth: 320 }}>
           {d.ioMonths.map((m) => (
             <div key={m.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5 }}>
@@ -214,13 +215,14 @@ export function PerformanceView({ d }: { d: Dashboard }) {
             </div>
           ))}
         </div>
+        </div>
         <div style={whatSays}>
           <strong style={{ color: '#5B7186' }}>What this says:</strong> every month the blue bar (new demand) towers over the green bar (completed work), the active backlog grows. In the current filter, <strong style={{ color: '#0B6FA4' }}>{d.ioOpenedTotal}</strong> requests were opened since April and <strong style={{ color: '#2E7D5B' }}>{d.ioCompletedTotal}</strong> reached 100%.
         </div>
       </Card>
 
       {/* received last 30 days */}
-      <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1fr 1fr', gap: 16, marginTop: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: 16, marginTop: 16, alignItems: 'start' }}>
         <Hero bg="#EAF2F8" border="#CFE0EE" labelColor="#0B6FA4" value={d.recent} valueColor="#0B6FA4" label="Received in last 30 days" body="new TA requests opened between 14 Jun and 14 Jul 2026." bodyColor="#3E6178" />
         <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
           <div style={cardTitle}>New by region</div>
@@ -233,7 +235,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       </div>
 
       {/* active on track */}
-      <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1fr 1fr', gap: 16, marginTop: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: 16, marginTop: 16, alignItems: 'start' }}>
         <Hero bg="#EAF2F8" border="#CFE0EE" labelColor="#3E9CD6" value={d.onTrack} valueColor="#3E9CD6" label="Active & on track" body="requests in progress whose expected completion date has not yet passed." bodyColor="#3E6178" />
         <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
           <div style={cardTitle}>On track by region</div>
@@ -272,7 +274,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       <>
       {/* ===== SECTION 3: OVERDUE REQUESTS ===== */}
       <SectionHeading n={3} title="Overdue requests" />
-      <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: 16, alignItems: 'start' }}>
         <Hero bg="#FBF0EF" border="#F0D2CF" labelColor="#B0453F" value={d.overdue} valueColor="#C0453F" label="Should be closed by now" body="active requests are past their expected completion date but not yet at 100%." bodyColor="#8A5450" />
         <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
           <div style={cardTitle}>Overdue by region</div>
@@ -306,7 +308,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       </Card>
 
       {/* stalled by region + practice */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start', marginTop: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, alignItems: 'start', marginTop: 16 }}>
         <StalledCard title="Stalled at 0% for 30+ days, by region" rows={d.stalledByRegionSev} legend={d.stalledSeverity} labelW={64} />
         <StalledCard title="Stalled at 0% for 30+ days, by practice" rows={d.stalledByPracticeSev} legend={d.stalledSeverity} labelW={150} />
       </div>
@@ -333,7 +335,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       <>
       {/* ===== SECTION 4: WORKLOAD ===== */}
       <SectionHeading n={4} title="Workload: practices, regions & staff" bg="#16385C" />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, alignItems: 'start' }}>
         <SolidWorkloadCard title="Requests by region" rows={d.byRegion} labelW={80} />
         <SolidWorkloadCard title="Requests by practice" rows={d.byPractice} labelW={150} />
       </div>

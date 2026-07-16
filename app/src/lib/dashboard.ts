@@ -396,6 +396,7 @@ export function computeDashboard(
 export interface DqTableRow {
   id: string;
   office: string;
+  full: string;
   region: string;
   practice: string;
   status: string;
@@ -420,6 +421,8 @@ export interface DataQuality {
   stalledCount: string;
   stalledByRegion: ColoredBarRow[];
   stalledByPractice: ColoredBarRow[];
+  unassignedByPractice: ColoredBarRow[];
+  zeroByPractice: ColoredBarRow[];
   stalledTable: DqTableRow[];
   readyCount: string;
   readyOf: string;
@@ -462,6 +465,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     return {
       id: c.id,
       office: c.office || '—',
+      full: c.full || c.desc || '—',
       region: c.region || '—',
       practice: c.practice || '—',
       status: c.status,
@@ -507,6 +511,10 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
 
   const stalledByRegion = toBars(groupBy(stalledSetup, 'region'), '#E0A21E', 7);
   const stalledByPractice = toBars(groupBy(stalledSetup.filter((c) => c.practice !== 'Other'), 'practice'), '#E0A21E', 15);
+
+  // team performance: unassigned and 0% (awaiting the setup steps), by practice
+  const unassignedByPractice = toBars(groupBy(setupSet.filter((c) => c.status === 'Unassigned' && c.practice !== 'Other'), 'practice'), '#E0A21E', 15);
+  const zeroByPractice = toBars(groupBy(setupSet.filter((c) => c.status === '0%' && c.practice !== 'Other'), 'practice'), '#5BA3D0', 15);
   const stalledTable = [...stalledSetup]
     .sort((a, b) => stallDays(b) - stallDays(a))
     .slice(0, 12)
@@ -644,6 +652,8 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     stalledCount: fmtNum(stalledSetup.length),
     stalledByRegion,
     stalledByPractice,
+    unassignedByPractice,
+    zeroByPractice,
     stalledTable,
     readyCount: fmtNum(ready.length),
     readyOf: fmtNum(at25.length),
