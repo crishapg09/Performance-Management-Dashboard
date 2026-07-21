@@ -35,14 +35,24 @@ EXPECTED_HEADER = (
     'Description', 'Objectives', 'Language', 'Modality',
     'Global Practice and Cross Sectoral Teams', 'Primary Programme Offer',
     'Assigned to', 'Implementation Status', 'Created', 'Opened', 'Updated',
-    'Resolved', 'Closed', 'First Response Time',
+    'Resolved', 'Closed', 'Resolution code', 'State',
 )
+
+# Requests with these resolution codes are administrative non-work — voided,
+# duplicated, or dropped before any work was needed — and are dropped from the
+# dataset entirely (they never reach the Performance or Data Quality views).
+EXCLUDED_RESOLUTIONS = {
+    'Voided/Canceled',
+    'Discontinued — did not need to proceed',
+    'Duplicate Issue',
+}
 
 # Column indices (0-based) used when building each record.
 C_ID, C_TYPE, C_XS, C_XC, C_OFFICE, C_REGION, C_REQFOR = 0, 1, 2, 3, 4, 5, 6
 C_SHORT, C_DESC, C_OBJ, C_MODALITY = 8, 9, 10, 12
 C_PRACTICE, C_OFFER, C_LEAD, C_STATUS = 13, 14, 15, 16
 C_CREATED, C_OPENED, C_UPDATED, C_RESOLVED, C_CLOSED = 17, 18, 19, 20, 21
+C_RESOLUTION, C_STATE = 22, 23  # State is captured in the export but unused here
 
 EPOCH = datetime.datetime(1899, 12, 30)  # Excel serial-date origin
 
@@ -142,10 +152,13 @@ def main():
     data_dir = os.path.join(app_dir, 'src', 'data')
 
     rows = load_rows(src)
-    records = [build(r) for r in rows if s(r[C_ID])]
+    real = [r for r in rows if s(r[C_ID])]
+    kept = [r for r in real if s(r[C_RESOLUTION]) not in EXCLUDED_RESOLUTIONS]
+    dropped = len(real) - len(kept)
+    records = [build(r) for r in kept]
 
-    # "as of" date = floor of the latest activity timestamp in the export
-    stamps = [serial(r[i]) for r in rows for i in (C_CREATED, C_OPENED, C_UPDATED)]
+    # "as of" date = floor of the latest activity timestamp among kept records
+    stamps = [serial(r[i]) for r in kept for i in (C_CREATED, C_OPENED, C_UPDATED)]
     today = math.floor(max(v for v in stamps if v is not None))
 
     with open(os.path.join(data_dir, 'cases.json'), 'w', encoding='utf-8') as f:
@@ -158,6 +171,7 @@ def main():
     from collections import Counter
     dist = dict(Counter(c['status'] for c in records))
     print(f'Wrote {len(records):,} records  ·  as of {today_str} (serial {today})')
+    print(f'Excluded {dropped:,} rows by resolution code {sorted(EXCLUDED_RESOLUTIONS)}')
     print(f'Status distribution: {dist}')
 
 
