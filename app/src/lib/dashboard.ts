@@ -146,10 +146,6 @@ export function computeDashboard(
     return t != null && t >= TODAY - 30 && t <= TODAY;
   });
 
-  // finalized-on-time (KPI)
-  const compEnd = done.filter((c) => (c.cl || c.rs) && c.xc);
-  const onTime = compEnd.filter((c) => (c.cl || c.rs)! <= (c.xc as number)).length;
-
   // ---- table rows ----
   const rowFrom = (c: TACase, metric: string): OverdueTableRow => {
     const chip = statusChipStyle(c.status);
@@ -323,8 +319,8 @@ export function computeDashboard(
     { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: 'new since 21 Jun 2026', accent: '#1CABE2', color: '#0F2238' },
     { label: 'Active & on track', value: fmtNum(onTrack), sub: 'in progress, not overdue', accent: '#3E9CD6', color: '#3E9CD6' },
     { label: 'Completed', value: pct(done.length, total) + '%', sub: fmtNum(done.length) + ' at 100%', accent: '#2E7D5B', color: '#2E7D5B' },
-    { label: 'Finalized on time', value: compEnd.length ? pct(onTime, compEnd.length) + '%' : '—', sub: onTime + ' of ' + compEnd.length + ' with a target', accent: '#2E7D5B', color: '#2E7D5B' },
-    { label: 'Overdue', value: fmtNum(overdueSet.length), sub: 'past target, not done', accent: '#C0453F', color: '#C0453F' },
+    { label: 'Active on target', value: activeSet.length ? pct(onTrack, activeSet.length) + '%' : '—', sub: fmtNum(overdueSet.length) + ' overdue — update date or close', accent: '#3E9CD6', color: '#0F2238' },
+    { label: 'Overdue', value: fmtNum(overdueSet.length), sub: 'past their expected completion date', accent: '#C0453F', color: '#C0453F' },
   ];
 
   return {
