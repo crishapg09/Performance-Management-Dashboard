@@ -22,6 +22,8 @@ const PRINT_CSS = `
 @media print {
   @page { size: letter portrait; margin: 0.5in; }
   html, body { background: #fff !important; }
+  /* force bar/chip/background colours to print (browsers strip them by default) */
+  .dq-print, .dq-print * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .scr-only { display: none !important; }
   /* un-clip only the auto-scroll containers (chart lists, table bodies) so
      everything prints; leave overflow:hidden ellipsis cells truncating. */
@@ -291,18 +293,11 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </Card>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
-        <Card>
-          <div style={bigTitle}>Stalled in setup, by region</div>
-          <div style={subLabel}>Unassigned &gt;14 days · 0%/25% not updated in 30+ days</div>
-          <MetricBars rows={dq.stalledByRegion} labelWidth={64} trackBg="#F5EEDF" />
-        </Card>
-        <Card>
-          <div style={bigTitle}>Stalled in setup, by practice</div>
-          <div style={subLabel}>&nbsp;</div>
-          <div style={{ maxHeight: 160, overflowY: 'auto', paddingRight: 6 }}><MetricBars rows={dq.stalledByPractice} labelWidth={150} trackBg="#F5EEDF" /></div>
-        </Card>
-      </div>
+      <Card style={{ marginTop: 16 }}>
+        <div style={bigTitle}>Stalled in setup, by practice</div>
+        <div style={subLabel}>Unassigned &gt;14 days · 0%/25% not updated in 30+ days</div>
+        <div style={{ maxHeight: 220, overflowY: 'auto', paddingRight: 6 }}><MetricBars rows={dq.stalledByPractice} labelWidth={150} trackBg="#F5EEDF" /></div>
+      </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
         <Card>
@@ -363,18 +358,11 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
-        <Card>
-          <div style={bigTitle}>Quality score by region</div>
-          <div style={subLabel}>% of started records that pass every check</div>
-          <QualityBars rows={dq.qualityByRegion} labelWidth={64} />
-        </Card>
-        <Card>
-          <div style={bigTitle}>Quality score by practice</div>
-          <div style={subLabel}>&nbsp;</div>
-          <div style={{ maxHeight: 170, overflowY: 'auto', paddingRight: 6 }}><QualityBars rows={dq.qualityByPractice} labelWidth={150} /></div>
-        </Card>
-      </div>
+      <Card style={{ marginTop: 16 }}>
+        <div style={bigTitle}>Quality score by practice</div>
+        <div style={subLabel}>% of started records that pass every check</div>
+        <div style={{ maxHeight: 230, overflowY: 'auto', paddingRight: 6 }}><QualityBars rows={dq.qualityByPractice} labelWidth={150} /></div>
+      </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
         <Card>
@@ -424,18 +412,11 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </div>
       </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
-        <Card>
-          <div style={bigTitle}>Overdue by region</div>
-          <div style={{ height: 8 }} />
-          <MetricBars rows={dq.overdueByRegion} labelWidth={64} trackBg="#F2EAE9" />
-        </Card>
-        <Card>
-          <div style={bigTitle}>Overdue by practice</div>
-          <div style={{ height: 8 }} />
-          <div style={{ maxHeight: 160, overflowY: 'auto', paddingRight: 6 }}><MetricBars rows={dq.overdueByPractice} labelWidth={150} trackBg="#F2EAE9" /></div>
-        </Card>
-      </div>
+      <Card style={{ marginTop: 16 }}>
+        <div style={bigTitle}>Overdue by practice</div>
+        <div style={{ height: 8 }} />
+        <div style={{ maxHeight: 220, overflowY: 'auto', paddingRight: 6 }}><MetricBars rows={dq.overdueByPractice} labelWidth={150} trackBg="#F2EAE9" /></div>
+      </Card>
 
       {printing ? (
         <>
