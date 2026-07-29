@@ -64,6 +64,7 @@ export function FilterBar({
 }: FilterBarProps) {
   return (
     <div
+      className="scr-only"
       style={{
         position: 'sticky',
         top: 0,

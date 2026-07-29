@@ -134,8 +134,11 @@ export function computeDashboard(
   const total = F.length;
   const ALL = cases.length;
 
-  const done = F.filter((c) => c.status === '100%');
   const activeSet = F.filter((c) => !['100%', 'Discontinued', 'Unassigned'].includes(c.status));
+  // Completion against target: of the requests whose expected completion date
+  // has arrived (due by today), how many are actually at 100%.
+  const dueByToday = F.filter((c) => c.xc != null && (c.xc as number) <= TODAY);
+  const doneByTarget = dueByToday.filter((c) => c.status === '100%').length;
   const overdueSet = activeSet
     .filter((c) => c.xc != null && c.xc < TODAY)
     .sort((a, b) => TODAY - (b.xc as number) - (TODAY - (a.xc as number)));
@@ -316,9 +319,9 @@ export function computeDashboard(
 
   const kpis: KPI[] = [
     { label: 'Total requests', value: fmtNum(total), sub: 'in current filter', accent: '#0B6FA4', color: '#0F2238' },
-    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: 'new since 22 Jun 2026', accent: '#1CABE2', color: '#0F2238' },
+    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: 'new since 29 Jun 2026', accent: '#1CABE2', color: '#0F2238' },
     { label: 'Active & on track', value: fmtNum(onTrack), sub: 'in progress, not overdue', accent: '#3E9CD6', color: '#3E9CD6' },
-    { label: 'Completed', value: pct(done.length, total) + '%', sub: fmtNum(done.length) + ' at 100%', accent: '#2E7D5B', color: '#2E7D5B' },
+    { label: 'Completed vs. target', value: dueByToday.length ? pct(doneByTarget, dueByToday.length) + '%' : '—', sub: 'of ' + fmtNum(dueByToday.length) + ' due by today, ' + fmtNum(doneByTarget) + ' at 100%', accent: '#2E7D5B', color: '#2E7D5B' },
     { label: 'Active on target', value: activeSet.length ? pct(onTrack, activeSet.length) + '%' : '—', sub: fmtNum(overdueSet.length) + ' overdue — update date or close', accent: '#3E9CD6', color: '#0F2238' },
     { label: 'Overdue', value: fmtNum(overdueSet.length), sub: 'past their expected completion date', accent: '#C0453F', color: '#C0453F' },
   ];

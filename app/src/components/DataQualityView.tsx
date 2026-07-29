@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Dashboard, CheckItem, CompletenessRow, QualityRegionRow, BucketRow, DqTableRow, TransitionCard } from '../lib/dashboard';
 import type { ColoredBarRow } from '../lib/aggregate';
 import { Card } from './Card';
@@ -14,6 +14,24 @@ type DqTab = (typeof SUBTABS)[number]['id'];
 const bigTitle: React.CSSProperties = { fontSize: 13.5, fontWeight: 700 };
 const subLabel: React.CSSProperties = { fontSize: 11.5, color: '#9AA7B2', marginBottom: 16 };
 const note: React.CSSProperties = { fontSize: 12, color: '#8A98A6', lineHeight: 1.55, marginTop: 14, borderTop: '1px solid #F1F4F7', paddingTop: 12 };
+
+// Print-to-PDF: a letter-page layout that hides the filter bar, drops the
+// horizontal scroll on tables, un-clips scroll boxes, and starts each subtab
+// section on a new page. Applied only when printing; screen view is untouched.
+const PRINT_CSS = `
+@media print {
+  @page { size: letter portrait; margin: 0.5in; }
+  html, body { background: #fff !important; }
+  .scr-only { display: none !important; }
+  /* un-clip only the auto-scroll containers (chart lists, table bodies) so
+     everything prints; leave overflow:hidden ellipsis cells truncating. */
+  .dq-print [style*="auto"] { overflow: visible !important; max-height: none !important; }
+  .dq-inner { min-width: 0 !important; width: 100% !important; }
+  /* tighter table columns so all 8 fit a letter page (screen keeps the wide grid) */
+  .dq-print .dq-grid { grid-template-columns: 74px 74px 1fr 48px 84px 50px 90px 60px !important; gap: 6px !important; padding-left: 12px !important; padding-right: 12px !important; font-size: 11px !important; }
+  .dq-page + .dq-page { break-before: page; }
+}
+`;
 
 function StageHeading({ n, title, bg }: { n: number; title: string; bg: string }) {
   return (
@@ -129,14 +147,14 @@ function DqTable({ title, count, rows, metricLabel, footer, toggle }: { title: s
         )}
       </div>
       <div style={{ overflowX: 'auto' }}>
-        <div style={{ minWidth: 940 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: dqCols, gap: 10, padding: '8px 22px', background: '#F6F8FA', borderTop: '1px solid #EDF1F4', borderBottom: '1px solid #EDF1F4', fontSize: 10.5, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7A8C9C', fontWeight: 700 }}>
+        <div className="dq-inner" style={{ minWidth: 940 }}>
+          <div className="dq-grid" style={{ display: 'grid', gridTemplateColumns: dqCols, gap: 10, padding: '8px 22px', background: '#F6F8FA', borderTop: '1px solid #EDF1F4', borderBottom: '1px solid #EDF1F4', fontSize: 10.5, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7A8C9C', fontWeight: 700 }}>
             <div>Case</div><div>Country</div><div>Description</div><div>Region</div><div>Practice</div><div>Status</div><div>TA lead</div><div style={{ textAlign: 'right' }}>{metricLabel}</div>
           </div>
           <div style={{ maxHeight: 360, overflowY: 'auto' }}>
             {rows.length === 0 && <div style={{ padding: '18px 22px', fontSize: 12.5, color: '#9AA7B2' }}>None in the current filter. 🎉</div>}
             {rows.map((r) => (
-              <div key={r.id} style={{ display: 'grid', gridTemplateColumns: dqCols, gap: 10, padding: '11px 22px', borderBottom: '1px solid #F1F4F7', alignItems: 'center', fontSize: 12.5 }}>
+              <div key={r.id} className="dq-grid" style={{ display: 'grid', gridTemplateColumns: dqCols, gap: 10, padding: '11px 22px', borderBottom: '1px solid #F1F4F7', alignItems: 'center', fontSize: 12.5 }}>
                 <div style={{ fontWeight: 600, color: '#0B5A8A', fontVariantNumeric: 'tabular-nums' }}>{r.id}</div>
                 <div style={{ color: '#43586B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.office}</div>
                 <div title={r.full} style={{ color: '#5B7186', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'help' }}>{r.full}</div>
@@ -186,8 +204,34 @@ export function DataQualityView({ d }: { d: Dashboard }) {
   const dq = d.dq;
   const [tab, setTab] = useState<DqTab>('received');
   const [closureTab, setClosureTab] = useState<'overdue' | 'notclosed'>('overdue');
+  const [printing, setPrinting] = useState(false);
+
+  // When printing, render every subtab (below) then open the browser print
+  // dialog; reset once the dialog closes so the screen view returns to normal.
+  useEffect(() => {
+    if (!printing) return;
+    const done = () => setPrinting(false);
+    window.addEventListener('afterprint', done);
+    const id = window.setTimeout(() => window.print(), 80);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener('afterprint', done);
+    };
+  }, [printing]);
+
   return (
-    <>
+    <div className="dq-print">
+      <style>{PRINT_CSS}</style>
+      {!printing && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+          <button
+            onClick={() => setPrinting(true)}
+            style={{ border: '1px solid #0B6FA4', background: '#0B6FA4', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, padding: '8px 16px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 7 }}
+          >
+            <span style={{ fontSize: 14 }}>🖨</span> Print to PDF
+          </button>
+        </div>
+      )}
       <KpiStrip kpis={dq.kpis} />
 
       <div style={{ background: '#EEF6FB', border: '1px solid #CFE6F2', borderRadius: 10, padding: '13px 18px', marginTop: 14, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -197,7 +241,8 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </div>
       </div>
 
-      {/* Sub-tab bar */}
+      {/* Sub-tab bar (screen only) */}
+      {!printing && (
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #DCE3EA', margin: '22px 0 6px', flexWrap: 'wrap' }}>
         {SUBTABS.map((t) => {
           const on = tab === t.id;
@@ -223,9 +268,10 @@ export function DataQualityView({ d }: { d: Dashboard }) {
           );
         })}
       </div>
+      )}
 
-      {tab === 'received' && (
-      <>
+      {(tab === 'received' || printing) && (
+      <div className="dq-page">
       {/* ===== ① Received & in review ===== */}
       <StageHeading n={1} title="Received & in review — Unassigned · 0% · 25%" bg="#0B6FA4" />
       <Intro>
@@ -288,11 +334,11 @@ export function DataQualityView({ d }: { d: Dashboard }) {
 
       <TransitionCards cards={dq.transitionCards} />
 
-      </>
+      </div>
       )}
 
-      {tab === 'delivery' && (
-      <>
+      {(tab === 'delivery' || printing) && (
+      <div className="dq-page">
       {/* ===== ② Started & in delivery ===== */}
       <StageHeading n={2} title="Started & in delivery — 50% onwards" bg="#16385C" />
       <Intro>
@@ -347,11 +393,11 @@ export function DataQualityView({ d }: { d: Dashboard }) {
 
       <DqTable title="Started records needing cleanup" count={dq.flagCount} rows={dq.flagTable} metricLabel="Missing / issue" />
 
-      </>
+      </div>
       )}
 
-      {tab === 'overdue' && (
-      <>
+      {(tab === 'overdue' || printing) && (
+      <div className="dq-page">
       {/* ===== ③ Overdue, at-risk & closure ===== */}
       <StageHeading n={3} title="Overdue, at-risk & closure" bg="#C0453F" />
       <Intro>Timeliness against the expected completion date, plus records that should now be closed.</Intro>
@@ -391,7 +437,18 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </Card>
       </div>
 
-      {closureTab === 'overdue' ? (
+      {printing ? (
+        <>
+          <DqTable title="Most overdue active requests" rows={dq.overdueTable} metricLabel="Days over" footer={dq.overdueNote} />
+          <DqTable
+            title="Completed or discontinued, but not closed"
+            count={dq.notClosedCount}
+            rows={dq.notClosedTable}
+            metricLabel="Reason"
+            footer="Once a TA is completed (100%) or discontinued, it should be closed. These records still have no close date."
+          />
+        </>
+      ) : closureTab === 'overdue' ? (
         <DqTable
           title="Most overdue active requests"
           rows={dq.overdueTable}
@@ -410,8 +467,8 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         />
       )}
       <div style={note}>&nbsp;</div>
-      </>
+      </div>
       )}
-    </>
+    </div>
   );
 }
