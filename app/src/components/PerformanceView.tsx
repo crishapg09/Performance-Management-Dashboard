@@ -214,7 +214,7 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
   return (
     <>
       <Card style={{ marginTop: 16 }}>
-        <div style={bigCardTitle}>Where the work sits</div>
+        <div style={bigCardTitle}>Where the work stands</div>
         <div style={{ fontSize: 11.5, color: '#9AA7B2', marginTop: 4, marginBottom: 16 }}>
           square size reflects the number of TAs · click one to break it down by practice
         </div>
