@@ -158,8 +158,8 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
   const maxSide = Math.max(...squares.map((s) => s.side));
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 16, marginTop: 16, alignItems: 'start' }}>
-      <Card>
+    <>
+      <Card style={{ marginTop: 16 }}>
         <div style={bigCardTitle}>Where the work sits</div>
         <div style={{ fontSize: 11.5, color: '#9AA7B2', marginTop: 4, marginBottom: 16 }}>
           square size reflects the number of TAs · click one to break it down by practice
@@ -214,7 +214,7 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
         </div>
       </Card>
 
-      <Card>
+      <Card style={{ marginTop: 16 }}>
         <div style={bigCardTitle}>
           {active.label} <span style={{ fontWeight: 400, color: '#9AA7B2' }}>by practice</span>
         </div>
@@ -224,12 +224,12 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
         {active.byPractice.length === 0 ? (
           <div style={{ fontSize: 12.5, color: '#9AA7B2' }}>None in the current filter.</div>
         ) : (
-          <div style={{ maxHeight: 260, overflowY: 'auto', paddingRight: 6 }}>
-            <BarList rows={active.byPractice} labelWidth={150} trackBg="#EEF2F6" />
+          <div style={{ maxHeight: 330, overflowY: 'auto', paddingRight: 6 }}>
+            <BarList rows={active.byPractice} labelWidth={200} trackBg="#EEF2F6" />
           </div>
         )}
       </Card>
-    </div>
+    </>
   );
 }
 
