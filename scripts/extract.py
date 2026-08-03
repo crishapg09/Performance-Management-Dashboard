@@ -131,7 +131,10 @@ def build(r):
         'xs': serial(r[C_XS]), 'xc': serial(r[C_XC]),
         'cr': serial(r[C_CREATED]), 'op': serial(r[C_OPENED]), 'up': serial(r[C_UPDATED]),
         'rs': serial(r[C_RESOLVED]), 'cl': serial(r[C_CLOSED]),
-        'hd': 1 if clean_html(r[C_DETAILS]) else 0, 'ho': 1 if r[C_OBJ] else 0,
+        # A placeholder ("test", "please add a description", …) counts as NOT
+        # having a description: the field is filled but says nothing.
+        'hd': 0 if is_placeholder(clean_html(r[C_DETAILS])) else 1,
+        'ho': 1 if r[C_OBJ] else 0,
         # 1 when the description is placeholder text rather than a real one
         'ph': 1 if is_placeholder(clean_html(r[C_DETAILS])) else 0,
     }
