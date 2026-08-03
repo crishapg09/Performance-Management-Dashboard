@@ -210,6 +210,11 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
             <BarList rows={active.byPractice} labelWidth={200} trackBg="#EEF2F6" />
           </div>
         )}
+        <div style={whatSays}>
+          <strong style={{ color: '#5B7186' }}>What this says:</strong> percentages are relative to each practice's own
+          total, not to the {active.nLabel} requests above. It shows the portion of this practice's requests that fall
+          into this group.
+        </div>
       </Card>
     </>
   );

@@ -359,7 +359,7 @@ export function computeDashboard(
     sub,
     pctLabel: total ? pct(set.length, total) + '%' : '—',
     side: Math.round(72 + 86 * Math.sqrt(set.length / sqMax)),
-    byPractice: toBars(groupBy(set.filter((c) => c.practice !== 'Other'), 'practice'), color, 15).map((r) => {
+    byPractice: toBars(groupBy(set.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice'), color, 15).map((r) => {
       const denom = practiceTotals.get(r.label) ?? 0;
       return { ...r, share: denom ? pct(r.n, denom) + '%' : '—' };
     }),
