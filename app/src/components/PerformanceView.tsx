@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Dashboard, StackedRow } from '../lib/dashboard';
+import type { Dashboard, StackedRow, MetricSquare } from '../lib/dashboard';
 import { Card } from './Card';
 import { SectionHeading } from './SectionHeading';
 import { KpiStrip } from './KpiStrip';
@@ -147,6 +147,92 @@ function StalledCard({ title, rows, legend, labelW }: { title: string; rows: Sta
   );
 }
 
+/**
+ * Metric squares sized by volume (area ∝ number of TAs). Selecting one filters
+ * the practice breakdown underneath to that metric.
+ */
+function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
+  const [sel, setSel] = useState(squares[0]?.id ?? '');
+  const active = squares.find((s) => s.id === sel) ?? squares[0];
+  if (!active) return null;
+  const maxSide = Math.max(...squares.map((s) => s.side));
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 16, marginTop: 16, alignItems: 'start' }}>
+      <Card>
+        <div style={bigCardTitle}>Where the work sits</div>
+        <div style={{ fontSize: 11.5, color: '#9AA7B2', marginTop: 4, marginBottom: 16 }}>
+          square size reflects the number of TAs · click one to break it down by practice
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end', minHeight: maxSide + 34 }}>
+          {squares.map((s) => {
+            const on = s.id === active.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setSel(s.id)}
+                title={`${s.label}: ${s.nLabel} — ${s.sub}`}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <div
+                  style={{
+                    width: s.side,
+                    height: s.side,
+                    borderRadius: 8,
+                    background: on ? s.color : `${s.color}2E`,
+                    border: `2px solid ${on ? s.color : 'transparent'}`,
+                    boxShadow: on ? '0 3px 10px rgba(15,34,56,.18)' : 'none',
+                    color: on ? '#fff' : s.color,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: Math.max(15, Math.min(30, s.side / 4)),
+                    fontWeight: 700,
+                    fontVariantNumeric: 'tabular-nums',
+                    transition: 'background .15s, box-shadow .15s',
+                  }}
+                >
+                  {s.nLabel}
+                </div>
+                <div style={{ fontSize: 11.5, fontWeight: on ? 700 : 600, color: on ? '#0F2238' : '#5B7186', maxWidth: Math.max(s.side, 92) }}>
+                  {s.label}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card>
+        <div style={bigCardTitle}>
+          {active.label} <span style={{ fontWeight: 400, color: '#9AA7B2' }}>by practice</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: '#9AA7B2', marginTop: 4, marginBottom: 16 }}>
+          {active.nLabel} requests · {active.sub}
+        </div>
+        {active.byPractice.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: '#9AA7B2' }}>None in the current filter.</div>
+        ) : (
+          <div style={{ maxHeight: 260, overflowY: 'auto', paddingRight: 6 }}>
+            <BarList rows={active.byPractice} labelWidth={150} trackBg="#EEF2F6" />
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 export function PerformanceView({ d }: { d: Dashboard }) {
   const [tab, setTab] = useState<SubTab>('demand');
   return (
@@ -221,31 +307,8 @@ export function PerformanceView({ d }: { d: Dashboard }) {
         </div>
       </Card>
 
-      {/* received last 30 days */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: 16, marginTop: 16, alignItems: 'start' }}>
-        <Hero bg="#EAF2F8" border="#CFE0EE" labelColor="#0B6FA4" value={d.recent} valueColor="#0B6FA4" label="Received in last 30 days" body="new TA requests opened between 4 Jul and 3 Aug 2026." bodyColor="#3E6178" />
-        <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
-          <div style={cardTitle}>New by region</div>
-          <BarList rows={d.recentByRegion} labelWidth={64} trackBg="#E9F0F6" />
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
-          <div style={cardTitle}>New by practice</div>
-          <div style={scrollBox}><BarList rows={d.recentByPractice} labelWidth={150} trackBg="#E9F0F6" /></div>
-        </div>
-      </div>
-
-      {/* active on track */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: 16, marginTop: 16, alignItems: 'start' }}>
-        <Hero bg="#EAF2F8" border="#CFE0EE" labelColor="#3E9CD6" value={d.onTrack} valueColor="#3E9CD6" label="Active & on track" body="requests in progress whose expected completion date has not yet passed." bodyColor="#3E6178" />
-        <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
-          <div style={cardTitle}>On track by region</div>
-          <BarList rows={d.onTrackByRegion} labelWidth={64} trackBg="#E4EFF6" />
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
-          <div style={cardTitle}>On track by practice</div>
-          <div style={scrollBox}><BarList rows={d.onTrackByPractice} labelWidth={150} trackBg="#E4EFF6" /></div>
-        </div>
-      </div>
+      {/* metric squares — click to re-break the practice chart */}
+      <MetricExplorer squares={d.metricSquares} />
 
       {/* newest requests table */}
       <RequestTable title="Newest requests (last 30 days)" rows={d.newTable} metricLabel="Age (days)" daysColor="#0B6FA4" />

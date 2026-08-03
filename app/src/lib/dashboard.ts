@@ -56,6 +56,18 @@ export interface StackSeg { w: number; color: string; }
 export interface StackedRow { label: string; n: number; barPct: number; segs: StackSeg[]; leads?: number; }
 export interface MonthBar { label: string; in: number; done: number; inH: number; doneH: number; hasNote: boolean; }
 export interface BucketRow { label: string; n: number; color: string; pct: number; }
+/** A clickable metric square: sized by its count, carrying its own by-practice split. */
+export interface MetricSquare {
+  id: string;
+  label: string;
+  n: number;
+  nLabel: string;
+  color: string;
+  /** px side length, scaled so area is proportional to the count */
+  side: number;
+  sub: string;
+  byPractice: ColoredBarRow[];
+}
 export interface LegendItem { label: string; color: string; }
 export interface OverdueTableRow {
   id: string; country: string; full: string; practice: string; expDate: string; status: string;
@@ -94,11 +106,11 @@ export interface Dashboard {
   ioOpenedTotal: string;
   ioCompletedTotal: string;
   recent: number;
-  recentByRegion: ColoredBarRow[];
   recentByPractice: ColoredBarRow[];
   onTrack: number;
-  onTrackByRegion: ColoredBarRow[];
   onTrackByPractice: ColoredBarRow[];
+  /** Demand & delivery: click a square to re-break the practice chart. */
+  metricSquares: MetricSquare[];
   newTable: OverdueTableRow[];
 
   mgmtKpis: KPI[];
@@ -322,7 +334,29 @@ export function computeDashboard(
     { label: 'Discontinued', value: fmtNum(disc), sub: discRate.toFixed(1) + '% requests dropped', accent: '#9AA7B2', color: '#5B7186' },
   ];
 
-  const viewTabs: ToggleButton[] = ([['overview', 'Performance'], ['quality', 'Data Quality Review']] as [ViewId, string][]).map(([v, label]) => ({
+  // Metric squares for Demand & delivery: each is sized so its AREA is
+  // proportional to the number of TAs, and carries its own by-practice split
+  // so selecting a square just re-renders the chart from data already computed.
+  const doneSet = F.filter((c) => c.status === '100%');
+  const squareDefs: [string, string, string, string, TACase[]][] = [
+    ['received', 'Received last 30 days', '#1CABE2', 'opened in the last 30 days', recentSet],
+    ['ontrack', 'Active & on track', '#3E9CD6', 'in progress, not overdue', onTrackSet],
+    ['completed', 'Completed', '#2E7D5B', 'reached 100%', doneSet],
+    ['overdue', 'Overdue', '#C0453F', 'past their expected completion date', overdueSet],
+  ];
+  const sqMax = Math.max(1, ...squareDefs.map(([, , , , s]) => s.length));
+  const metricSquares: MetricSquare[] = squareDefs.map(([id, label, color, sub, set]) => ({
+    id,
+    label,
+    n: set.length,
+    nLabel: fmtNum(set.length),
+    color,
+    sub,
+    side: Math.round(72 + 86 * Math.sqrt(set.length / sqMax)),
+    byPractice: toBars(groupBy(set.filter((c) => c.practice !== 'Other'), 'practice'), color, 15),
+  }));
+
+  const viewTabs: ToggleButton[] =([['overview', 'Performance'], ['quality', 'Data Quality Review']] as [ViewId, string][]).map(([v, label]) => ({
     label, on: state.view === v, bg: state.view === v ? '#16385C' : '#fff', fg: state.view === v ? '#fff' : '#43586B', bd: state.view === v ? '#16385C' : '#D5DEE6',
   }));
 
@@ -380,10 +414,9 @@ export function computeDashboard(
     ioOpenedTotal,
     ioCompletedTotal,
     recent: recentSet.length,
-    recentByRegion: toBars(groupBy(recentSet, 'region'), '#0B6FA4', 7),
     recentByPractice: toBars(groupBy(recentSet.filter((c) => c.practice !== 'Other'), 'practice'), '#0B6FA4', 15),
+    metricSquares,
     onTrack,
-    onTrackByRegion: toBars(groupBy(onTrackSet, 'region'), '#3E9CD6', 7),
     onTrackByPractice: toBars(groupBy(onTrackSet.filter((c) => c.practice !== 'Other'), 'practice'), '#3E9CD6', 15),
     newTable,
 
