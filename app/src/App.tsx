@@ -38,7 +38,7 @@ function App() {
         paddingBottom: 60,
       }}
     >
-      <Header metaTotal={d.metaTotal} isQuality={d.isQuality} coFrom={d.coFrom} coUnassigned={d.coUnassigned} />
+      <Header metaTotal={d.metaTotal} isQuality={d.isQuality} coFrom={d.coFrom} coUnassigned={d.coUnassigned} coverage={d.coverage} />
 
       <FilterBar
         viewTabs={d.viewTabs}

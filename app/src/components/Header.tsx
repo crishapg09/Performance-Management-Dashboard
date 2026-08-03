@@ -3,9 +3,10 @@ interface HeaderProps {
   isQuality: boolean;
   coFrom: string;
   coUnassigned: string;
+  coverage: string;
 }
 
-export function Header({ metaTotal, isQuality, coFrom, coUnassigned }: HeaderProps) {
+export function Header({ metaTotal, isQuality, coFrom, coUnassigned, coverage }: HeaderProps) {
   return (
     <div style={{ maxWidth: 1340, margin: '0 auto', padding: '0 24px' }}>
       <div
@@ -37,7 +38,7 @@ export function Header({ metaTotal, isQuality, coFrom, coUnassigned }: HeaderPro
               <span style={{ fontWeight: 700, color: '#0F2238' }}>{metaTotal}</span> CO requests in source
             </div>
           )}
-          <div>Created Jan&ndash;Jul 2026 &middot; as of 31 Jul 2026</div>
+          <div>{coverage} &middot; as of 3 Aug 2026</div>
         </div>
       </div>
     </div>

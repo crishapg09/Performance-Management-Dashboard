@@ -64,6 +64,8 @@ export interface Dashboard {
   viewTabs: ToggleButton[];
 
   metaTotal: string;
+  /** e.g. "Created Jan–Aug 2026" — derived from the data, not hard-coded. */
+  coverage: string;
   coFrom: string;
   coUnassigned: string;
   filterTitle: string;
@@ -240,9 +242,11 @@ export function computeDashboard(
   const span = Math.max(1, loadMax - loadMin);
   const avgPos = ((loadAvgNum - loadMin) / span) * 100;
 
-  // opened vs completed by month (Apr–Jul)
+  // opened vs completed by month (April — when the REACH import landed — to the
+  // month of the "as of" date, so new months appear automatically on refresh)
+  const lastMonth = Math.max(3, monthIndex2026(TODAY));
   const io: { label: string; opened: number; completedN: number }[] = [];
-  for (let i = 3; i <= 6; i++) {
+  for (let i = 3; i <= lastMonth; i++) {
     io.push({
       label: MONTHS[i],
       opened: F.filter((c) => monthIndex2026(c.op) === i).length,
@@ -319,7 +323,7 @@ export function computeDashboard(
 
   const kpis: KPI[] = [
     { label: 'Total requests', value: fmtNum(total), sub: 'in current filter', accent: '#0B6FA4', color: '#0F2238' },
-    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: 'new since 1 Jul 2026', accent: '#1CABE2', color: '#0F2238' },
+    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: 'new since 4 Jul 2026', accent: '#1CABE2', color: '#0F2238' },
     { label: 'Active & on track', value: fmtNum(onTrack), sub: 'in progress, not overdue', accent: '#3E9CD6', color: '#3E9CD6' },
     { label: 'Completed vs. target', value: dueByToday.length ? pct(doneByTarget, dueByToday.length) + '%' : '—', sub: 'of ' + fmtNum(dueByToday.length) + ' due by today, ' + fmtNum(doneByTarget) + ' at 100%', accent: '#2E7D5B', color: '#2E7D5B' },
     { label: 'Active on target', value: activeSet.length ? pct(onTrack, activeSet.length) + '%' : '—', sub: fmtNum(overdueSet.length) + ' overdue — update date or close', accent: '#3E9CD6', color: '#0F2238' },
@@ -331,6 +335,13 @@ export function computeDashboard(
     isQuality: state.view === 'quality',
     viewTabs,
     metaTotal: fmtNum(ALL),
+    coverage: (() => {
+      const ms = cases.map((c) => monthIndex2026(c.op)).filter((m) => m >= 0);
+      if (!ms.length) return '';
+      const lo = MONTHS[Math.min(...ms)];
+      const hi = MONTHS[Math.max(...ms)];
+      return 'Created ' + (lo === hi ? lo : lo + '–' + hi) + ' 2026';
+    })(),
     coFrom: fmtNum(coFromN),
     coUnassigned: fmtNum(coUnassignedN),
     filterTitle,
