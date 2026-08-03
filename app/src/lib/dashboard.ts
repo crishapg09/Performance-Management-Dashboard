@@ -65,6 +65,8 @@ export interface MetricSquare {
   color: string;
   /** px side length, scaled so area is proportional to the count */
   side: number;
+  /** share of all requests in the current filter, e.g. "8%" */
+  pctLabel: string;
   sub: string;
   byPractice: ColoredBarRow[];
 }
@@ -352,6 +354,7 @@ export function computeDashboard(
     nLabel: fmtNum(set.length),
     color,
     sub,
+    pctLabel: total ? pct(set.length, total) + '%' : '—',
     side: Math.round(72 + 86 * Math.sqrt(set.length / sqMax)),
     byPractice: toBars(groupBy(set.filter((c) => c.practice !== 'Other'), 'practice'), color, 15),
   }));

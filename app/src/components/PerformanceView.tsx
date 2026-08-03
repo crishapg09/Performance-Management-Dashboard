@@ -205,8 +205,8 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
                 >
                   {s.nLabel}
                 </div>
-                <div style={{ fontSize: 11.5, fontWeight: on ? 700 : 600, color: on ? '#0F2238' : '#5B7186', maxWidth: Math.max(s.side, 92) }}>
-                  {s.label}
+                <div style={{ fontSize: 11.5, fontWeight: on ? 700 : 600, color: on ? '#0F2238' : '#5B7186', maxWidth: Math.max(s.side, 108) }}>
+                  {s.label} <span style={{ color: s.color, fontWeight: 700 }}>{s.pctLabel}</span>
                 </div>
               </button>
             );
