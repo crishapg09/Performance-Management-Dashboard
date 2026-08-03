@@ -457,10 +457,22 @@ export function PerformanceView({ d }: { d: Dashboard }) {
         <div style={{ position: 'relative', height: 10, borderRadius: 5, margin: '6px 4px 0', background: 'linear-gradient(90deg,#4CA576,#5BA3D0,#C0453F)' }}>
           <div style={{ position: 'absolute', top: -5, left: `${d.avgPos}%`, transform: 'translateX(-50%)', width: 3, height: 20, background: '#0F2238', borderRadius: 2 }} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '9px 4px 0', fontSize: 11, color: '#7A8C9C' }}>
-          <span>Min {d.loadMin}</span>
-          <span style={{ color: '#0F2238', fontWeight: 700 }}>Avg {d.loadAvg}</span>
-          <span>Max {d.loadMax}</span>
+        {/* Avg sits under the tick, so the label matches the marker's position */}
+        <div style={{ position: 'relative', height: 18, margin: '9px 4px 0', fontSize: 11, color: '#7A8C9C' }}>
+          <span style={{ position: 'absolute', left: 0 }}>Min {d.loadMin}</span>
+          <span
+            style={{
+              position: 'absolute',
+              left: `${d.avgPos}%`,
+              transform: 'translateX(-50%)',
+              whiteSpace: 'nowrap',
+              color: '#0F2238',
+              fontWeight: 700,
+            }}
+          >
+            Avg {d.loadAvg}
+          </span>
+          <span style={{ position: 'absolute', right: 0 }}>Max {d.loadMax}</span>
         </div>
       </Card>
 
