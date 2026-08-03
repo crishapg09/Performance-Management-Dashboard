@@ -218,7 +218,8 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
         <div style={{ fontSize: 11.5, color: '#9AA7B2', marginTop: 4, marginBottom: 16 }}>
           square size reflects the number of TAs · click one to break it down by practice
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, alignItems: 'flex-end', justifyContent: 'center', minHeight: maxSide + 34 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'center' }}>
+        <div style={{ flex: '1 1 460px', display: 'flex', flexWrap: 'wrap', gap: 22, alignItems: 'flex-end', justifyContent: 'center', minHeight: maxSide + 34 }}>
           {squares.map((s) => {
             const on = s.id === active.id;
             return (
@@ -265,6 +266,23 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
               </button>
             );
           })}
+        </div>
+
+        <div
+          style={{
+            flex: '1 1 240px',
+            maxWidth: 320,
+            borderLeft: '3px solid #EEF2F6',
+            paddingLeft: 18,
+            fontSize: 12.5,
+            color: '#5B7186',
+            lineHeight: 1.55,
+          }}
+        >
+          <strong style={{ color: '#43586B' }}>On track, Overdue and Completed</strong> cover the whole portfolio.{' '}
+          <strong style={{ color: '#43586B' }}>Received in the last 30 days</strong> is a subset, to show inflow of
+          requests.
+        </div>
         </div>
       </Card>
 
