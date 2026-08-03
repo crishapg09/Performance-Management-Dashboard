@@ -40,7 +40,16 @@ export function matchesFilters(c: TACase, s: FilterState): boolean {
 }
 
 export interface SelectOption { value: string; label: string; }
-export interface KPI { label: string; value: string; sub: string; accent: string; color: string; }
+export interface KpiSplit { value: string; color: string; sub: string; }
+export interface KPI {
+  label: string;
+  value: string;
+  sub: string;
+  accent: string;
+  color: string;
+  /** Two-value card (e.g. Big ticket vs. routine); when set, `value`/`sub` are ignored. */
+  split?: KpiSplit[];
+}
 export interface StatusChip { label: string; dot: string; on: boolean; bg: string; fg: string; bd: string; }
 export interface ToggleButton { label: string; on: boolean; bg: string; fg: string; bd?: string; }
 export interface StackSeg { w: number; color: string; }
@@ -137,10 +146,6 @@ export function computeDashboard(
   const ALL = cases.length;
 
   const activeSet = F.filter((c) => !['100%', 'Discontinued', 'Unassigned'].includes(c.status));
-  // Completion against target: of the requests whose expected completion date
-  // has arrived (due by today), how many are actually at 100%.
-  const dueByToday = F.filter((c) => c.xc != null && (c.xc as number) <= TODAY);
-  const doneByTarget = dueByToday.filter((c) => c.status === '100%').length;
   const overdueSet = activeSet
     .filter((c) => c.xc != null && c.xc < TODAY)
     .sort((a, b) => TODAY - (b.xc as number) - (TODAY - (a.xc as number)));
@@ -321,13 +326,24 @@ export function computeDashboard(
     label, on: state.view === v, bg: state.view === v ? '#16385C' : '#fff', fg: state.view === v ? '#fff' : '#43586B', bd: state.view === v ? '#16385C' : '#D5DEE6',
   }));
 
+  const bigN = F.filter((c) => c.type === 'Big Ticket').length;
+  const routineN = F.filter((c) => c.type === 'Routine').length;
+  const doneN = F.filter((c) => c.status === '100%').length;
+  const ofAll = (n: number) => (total ? pct(n, total) + '% of all requests' : '—');
+
   const kpis: KPI[] = [
-    { label: 'Total requests', value: fmtNum(total), sub: 'in current filter', accent: '#0B6FA4', color: '#0F2238' },
-    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: 'new since 4 Jul 2026', accent: '#1CABE2', color: '#0F2238' },
-    { label: 'Active & on track', value: fmtNum(onTrack), sub: 'in progress, not overdue', accent: '#3E9CD6', color: '#3E9CD6' },
-    { label: 'Completed vs. target', value: dueByToday.length ? pct(doneByTarget, dueByToday.length) + '%' : '—', sub: 'of ' + fmtNum(dueByToday.length) + ' due by today, ' + fmtNum(doneByTarget) + ' at 100%', accent: '#2E7D5B', color: '#2E7D5B' },
-    { label: 'Active on target', value: activeSet.length ? pct(onTrack, activeSet.length) + '%' : '—', sub: fmtNum(overdueSet.length) + ' overdue — update date or close', accent: '#3E9CD6', color: '#0F2238' },
-    { label: 'Overdue', value: fmtNum(overdueSet.length), sub: 'past their expected completion date', accent: '#C0453F', color: '#C0453F' },
+    { label: 'Total requests', value: fmtNum(total), sub: 'TA requests · country offices', accent: '#0B6FA4', color: '#0F2238' },
+    {
+      label: 'Big ticket vs. routine', value: '', sub: '', accent: '#CD6A2E', color: '#0F2238',
+      split: [
+        { value: fmtNum(bigN), color: '#CD6A2E', sub: (total ? pct(bigN, total) + '%' : '—') + ' big ticket' },
+        { value: fmtNum(routineN), color: '#0B6FA4', sub: (total ? pct(routineN, total) + '%' : '—') + ' routine' },
+      ],
+    },
+    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: ofAll(recentSet.length) + ' · new since 4 Jul 2026', accent: '#1CABE2', color: '#0F2238' },
+    { label: 'Active & on track', value: fmtNum(onTrack), sub: ofAll(onTrack) + ' · in progress, not overdue', accent: '#3E9CD6', color: '#3E9CD6' },
+    { label: 'Completed', value: fmtNum(doneN), sub: ofAll(doneN) + ' reached 100%', accent: '#2E7D5B', color: '#2E7D5B' },
+    { label: 'Overdue', value: fmtNum(overdueSet.length), sub: ofAll(overdueSet.length) + ' · past target date', accent: '#C0453F', color: '#C0453F' },
   ];
 
   return {
