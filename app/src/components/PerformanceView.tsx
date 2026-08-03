@@ -12,6 +12,7 @@ const SUBTABS = [
 ] as const;
 type SubTab = (typeof SUBTABS)[number]['id'];
 
+const fmtInt = (n: number) => n.toLocaleString('en-US');
 const bigCardTitle: React.CSSProperties = { fontSize: 13.5, fontWeight: 700 };
 const whatSays: React.CSSProperties = {
   fontSize: 12, color: '#8A98A6', lineHeight: 1.55, marginTop: 16, borderTop: '1px solid #F1F4F7', paddingTop: 12,
@@ -90,28 +91,99 @@ function StackTrack({ row, height, track = '#EEF2F6' }: { row: StackedRow; heigh
   );
 }
 
+type SortKey = 'n' | 'leads' | 'avg';
+
+const SORT_COLS: { key: SortKey; label: string; color: string; width: number }[] = [
+  { key: 'n', label: 'TAs', color: '#0B6FA4', width: 46 },
+  { key: 'leads', label: 'Leads', color: '#2E7D5B', width: 56 },
+  { key: 'avg', label: 'Avg / lead', color: '#CD6A2E', width: 74 },
+];
+
+/**
+ * Practice workload: a bar per practice plus TAs / Leads / Avg-per-lead columns.
+ * Clicking a column sorts by it and re-draws the bars against that measure, so
+ * the chart always matches the column you are reading.
+ */
 function SolidWorkloadCard({ title, rows, labelW }: { title: string; rows: StackedRow[]; labelW: number }) {
-  const body = (
-    <>
-      <div style={{ display: 'grid', gridTemplateColumns: `${labelW}px 1fr 38px 74px`, gap: 10, marginBottom: 9, fontSize: 10, letterSpacing: '.05em', textTransform: 'uppercase', color: '#9AA7B2', fontWeight: 700 }}>
-        <div /><div /><div style={{ textAlign: 'right' }}>TAs</div><div style={{ textAlign: 'right' }}>Leads</div>
+  const [sortBy, setSortBy] = useState<SortKey>('n');
+  const valueOf = (r: StackedRow) => (sortBy === 'n' ? r.n : sortBy === 'leads' ? r.leads ?? 0 : r.avg ?? 0);
+  const active = SORT_COLS.find((c) => c.key === sortBy)!;
+  const sorted = [...rows].sort((a, b) => valueOf(b) - valueOf(a));
+  const max = Math.max(1, ...rows.map(valueOf));
+  const cols = `${labelW}px 1fr ${SORT_COLS.map((c) => c.width + 'px').join(' ')}`;
+  const cell = (r: StackedRow, key: SortKey) =>
+    key === 'n' ? fmtInt(r.n) : key === 'leads' ? fmtInt(r.leads ?? 0) : (r.avg ?? 0).toFixed(1);
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        <div style={bigCardTitle}>{title}</div>
+        <div style={{ fontSize: 11.5, color: '#9AA7B2' }}>sorted by {active.label.toLowerCase()} · click a column to re-sort</div>
       </div>
+
+      {/* column headers double as sort controls */}
+      <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 10, marginBottom: 10 }}>
+        <div /><div />
+        {SORT_COLS.map((c) => {
+          const on = c.key === sortBy;
+          return (
+            <button
+              key={c.key}
+              onClick={() => setSortBy(c.key)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                padding: '2px 0',
+                textAlign: 'right',
+                fontSize: 10,
+                letterSpacing: '.05em',
+                textTransform: 'uppercase',
+                fontWeight: 700,
+                color: on ? c.color : '#9AA7B2',
+                borderBottom: `2px solid ${on ? c.color : 'transparent'}`,
+              }}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div>
-        {rows.map((row) => (
-          <div key={row.label} style={{ display: 'grid', gridTemplateColumns: `${labelW}px 1fr 38px 74px`, alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        {sorted.map((row) => (
+          <div key={row.label} style={{ display: 'grid', gridTemplateColumns: cols, alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600 }}>{row.label}</div>
-            <div style={{ height: 10, background: '#EEF2F6', borderRadius: 5 }}><div style={{ height: '100%', width: `${row.barPct}%`, background: '#0B6FA4', borderRadius: 5 }} /></div>
-            <div style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.n}</div>
-            <div style={{ fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#0B6FA4', fontWeight: 700 }}>{row.leads}</div>
+            <div style={{ height: 10, background: '#EEF2F6', borderRadius: 5, overflow: 'hidden' }}>
+              {sortBy === 'n' ? (
+                <div style={{ height: '100%', width: `${Math.round((row.n / max) * 100)}%`, display: 'flex', borderRadius: 5, overflow: 'hidden' }}>
+                  {row.segs.map((s, i) => (<div key={i} style={{ width: `${s.w}%`, background: s.color }} />))}
+                </div>
+              ) : (
+                <div style={{ height: '100%', width: `${Math.round((valueOf(row) / max) * 100)}%`, background: active.color, borderRadius: 5 }} />
+              )}
+            </div>
+            {SORT_COLS.map((c) => {
+              const on = c.key === sortBy;
+              return (
+                <div
+                  key={c.key}
+                  style={{
+                    fontSize: on ? 13 : 12,
+                    fontWeight: 700,
+                    textAlign: 'right',
+                    fontVariantNumeric: 'tabular-nums',
+                    color: on ? c.color : '#9AA7B2',
+                  }}
+                >
+                  {cell(row, c.key)}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
-    </>
-  );
-  return (
-    <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', boxSizing: 'border-box' }}>
-      <div style={{ ...bigCardTitle, marginBottom: 16 }}>{title}</div>
-      {body}
     </div>
   );
 }

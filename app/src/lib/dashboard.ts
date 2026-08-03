@@ -53,7 +53,7 @@ export interface KPI {
 export interface StatusChip { label: string; dot: string; on: boolean; bg: string; fg: string; bd: string; }
 export interface ToggleButton { label: string; on: boolean; bg: string; fg: string; bd?: string; }
 export interface StackSeg { w: number; color: string; }
-export interface StackedRow { label: string; n: number; barPct: number; segs: StackSeg[]; leads?: number; sub?: string; }
+export interface StackedRow { label: string; n: number; barPct: number; segs: StackSeg[]; leads?: number; sub?: string; avg?: number; }
 export interface MonthBar { label: string; in: number; done: number; inH: number; doneH: number; hasNote: boolean; }
 export interface BucketRow { label: string; n: number; color: string; pct: number; }
 /** A clickable metric square: sized by its count, carrying its own by-practice split. */
@@ -249,7 +249,7 @@ export function computeDashboard(
       const rowCases = F.filter((c) => (((c[key] as string) || '—') === r.label));
       const segs = STATUS_ORDER.map((s) => ({ w: r.n ? (rowCases.filter((c) => c.status === s).length / r.n) * 100 : 0, color: STATUS_COLORS[s] })).filter((seg) => seg.w > 0);
       const leads = new Set(rowCases.filter((c) => c.lead).map((c) => c.lead)).size;
-      return { label: r.label, n: r.n, barPct: Math.round((r.n / max) * 100), segs, leads };
+      return { label: r.label, n: r.n, barPct: Math.round((r.n / max) * 100), segs, leads, avg: leads ? r.n / leads : 0 };
     });
   };
 
