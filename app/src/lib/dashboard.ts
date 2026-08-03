@@ -53,7 +53,7 @@ export interface KPI {
 export interface StatusChip { label: string; dot: string; on: boolean; bg: string; fg: string; bd: string; }
 export interface ToggleButton { label: string; on: boolean; bg: string; fg: string; bd?: string; }
 export interface StackSeg { w: number; color: string; }
-export interface StackedRow { label: string; n: number; barPct: number; segs: StackSeg[]; leads?: number; }
+export interface StackedRow { label: string; n: number; barPct: number; segs: StackSeg[]; leads?: number; sub?: string; }
 export interface MonthBar { label: string; in: number; done: number; inH: number; doneH: number; hasNote: boolean; }
 export interface BucketRow { label: string; n: number; color: string; pct: number; }
 /** A clickable metric square: sized by its count, carrying its own by-practice split. */
@@ -117,18 +117,12 @@ export interface Dashboard {
 
   mgmtKpis: KPI[];
 
-  overdue: number;
-  overdueByRegion: ColoredBarRow[];
-  overdueByPractice: ColoredBarRow[];
   overdueBuckets: BucketRow[];
-  stalledSeverity: LegendItem[];
-  stalledByRegionSev: StackedRow[];
-  stalledByPracticeSev: StackedRow[];
-  stalledCount: string;
+  /** plain-language reading of the severity split, kept accurate on refresh */
+  overdueSeverityNote: string;
   overdueTableFinal: OverdueTableRow[];
 
   byPractice: StackedRow[];
-  byRegion: StackedRow[];
   staffBars: StackedRow[];
   staffLegend: LegendItem[];
   loadN: number;
@@ -233,7 +227,15 @@ export function computeDashboard(
   const staffBars: StackedRow[] = staffGrp.map((r) => {
     const rowCases = F.filter((c) => c.lead === r.label);
     const segs = STATUS_ORDER.map((s) => ({ w: r.n ? (rowCases.filter((c) => c.status === s).length / r.n) * 100 : 0, color: STATUS_COLORS[s] })).filter((seg) => seg.w > 0);
-    return { label: r.label, n: r.n, barPct: Math.round((r.n / staffMax) * 100), segs };
+    const byPrac = new Map<string, number>();
+    for (const c of rowCases) {
+      const k = c.practice || '—';
+      byPrac.set(k, (byPrac.get(k) ?? 0) + 1);
+    }
+    let top = '', topN = 0;
+    for (const [k, v] of byPrac) if (v > topN) { top = k; topN = v; }
+    const sub = byPrac.size > 1 ? top + ' +' + (byPrac.size - 1) + ' more' : top;
+    return { label: r.label, n: r.n, barPct: Math.round((r.n / staffMax) * 100), segs, sub };
   });
   const staffLegend: LegendItem[] = STATUS_ORDER.map((s) => ({ label: s, color: STATUS_COLORS[s] }));
 
@@ -291,25 +293,17 @@ export function computeDashboard(
     { label: '>60 days', n: over60, color: '#C0453F' },
   ].map((b) => ({ ...b, pct: Math.round((b.n / obMax) * 100) }));
 
+  // Plain-language reading of the severity split. Derived (not hard-coded) so a
+  // refresh can't leave a stale claim like "most are less than 30 days late".
+  const biggestBucket = overdueBuckets.reduce((a, b) => (b.n > a.n ? b : a), overdueBuckets[0]);
+  const overdueSeverityNote =
+    fmtNum(overdueSet.length) + ' active requests are past their expected completion date. ' +
+    'The largest group is ' + biggestBucket.label.toLowerCase() + ' late (' + fmtNum(biggestBucket.n) + '). ' +
+    'Anything beyond 60 days needs the expected completion date reviewed: the original target is no longer ' +
+    'credible, so the request should be re-planned, or closed if the work is finished.';
+
   // stalled at 0% > 30 days
   const stalled = activeSet.filter((c) => c.status === '0%' && c.op != null && TODAY - (c.op as number) > 30);
-  const stalledByRegion = toBars(groupBy(stalled, 'region'), '#E0A21E', 7);
-  const stalledByPractice = toBars(groupBy(stalled.filter((c) => c.practice !== 'Other'), 'practice'), '#E0A21E', 15);
-  const stalledBucket = (c: TACase) => (TODAY - (c.op as number) <= 60 ? '31–60 days' : '>60 days');
-  const stalledSevColors: Record<string, string> = { '31–60 days': '#CD6A2E', '>60 days': '#C0453F' };
-  const stalledSeverity: LegendItem[] = ['31–60 days', '>60 days'].map((label) => ({ label, color: stalledSevColors[label] }));
-  const stalledStack = (rows: ColoredBarRow[]): StackedRow[] =>
-    rows.map((row) => {
-      const cs = stalled.filter((c) => c.region === row.label || c.practice === row.label);
-      const segs = ['31–60 days', '>60 days'].map((label) => {
-        const n = cs.filter((c) => stalledBucket(c) === label).length;
-        return { color: stalledSevColors[label], w: row.n ? Math.round((n / row.n) * 100) : 0 };
-      });
-      return { label: row.label, n: row.n, barPct: row.pct, segs };
-    });
-  const stalledByRegionSev = stalledStack(stalledByRegion);
-  const stalledByPracticeSev = stalledStack(stalledByPractice);
-
   const closed30 = F.filter((c) => c.cl != null && (c.cl as number) >= TODAY - 30 && (c.cl as number) <= TODAY).length;
 
   // full-export match for discontinued + data quality
@@ -435,18 +429,11 @@ export function computeDashboard(
 
     mgmtKpis,
 
-    overdue: overdueSet.length,
-    overdueByRegion: toBars(groupBy(overdueSet, 'region'), '#C0453F', 7),
-    overdueByPractice: toBars(groupBy(overdueSet.filter((c) => c.practice !== 'Other'), 'practice'), '#C0453F', 15),
     overdueBuckets,
-    stalledSeverity,
-    stalledByRegionSev,
-    stalledByPracticeSev,
-    stalledCount: fmtNum(stalled.length),
+    overdueSeverityNote,
     overdueTableFinal,
 
     byPractice: stackByStatus('practice', 15),
-    byRegion: stackByStatus('region', 9),
     staffBars,
     staffLegend,
     loadN,

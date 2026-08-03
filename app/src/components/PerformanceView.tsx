@@ -8,39 +8,47 @@ import { BarList } from './BarList';
 const SUBTABS = [
   { id: 'demand', label: 'Demand & delivery' },
   { id: 'cycle', label: 'Cycle time' },
-  { id: 'overdue', label: 'Overdue requests' },
   { id: 'workload', label: 'Workload' },
 ] as const;
 type SubTab = (typeof SUBTABS)[number]['id'];
 
-const cardTitle: React.CSSProperties = { fontSize: 13, fontWeight: 700, marginBottom: 14 };
 const bigCardTitle: React.CSSProperties = { fontSize: 13.5, fontWeight: 700 };
 const whatSays: React.CSSProperties = {
   fontSize: 12, color: '#8A98A6', lineHeight: 1.55, marginTop: 16, borderTop: '1px solid #F1F4F7', paddingTop: 12,
 };
 const scrollBox: React.CSSProperties = { maxHeight: 150, overflowY: 'auto', paddingRight: 6 };
 
-function Hero({ bg, border, labelColor, value, valueColor, label, body, bodyColor }: {
-  bg: string; border: string; labelColor: string; value: number | string; valueColor: string; label: string; body: string; bodyColor: string;
-}) {
-  return (
-    <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <div style={{ fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: labelColor, fontWeight: 700 }}>{label}</div>
-      <div style={{ fontSize: 52, fontWeight: 700, letterSpacing: '-.03em', color: valueColor, lineHeight: 1, margin: '10px 0 6px', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      <div style={{ fontSize: 12.5, color: bodyColor, lineHeight: 1.5 }}>{body}</div>
-    </div>
-  );
-}
-
 const tableCols = '100px 110px 1.5fr 124px 96px 64px 74px 120px 80px';
 
-function RequestTable({ title, rows, metricLabel, daysColor, footer }: {
-  title: string; rows: Dashboard['newTable']; metricLabel: string; daysColor: string; footer?: string;
+interface TableToggle {
+  tabs: { id: string; label: string }[];
+  active: string;
+  onChange: (id: string) => void;
+}
+
+function RequestTable({ title, rows, metricLabel, daysColor, footer, toggle }: {
+  title: string; rows: Dashboard['newTable']; metricLabel: string; daysColor: string; footer?: string; toggle?: TableToggle;
 }) {
   return (
     <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '6px 0 4px', marginTop: 16, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 22px 10px', flexWrap: 'wrap' }}>
         <div style={{ fontSize: 13, fontWeight: 700 }}>{title}</div>
+        {toggle && (
+          <div style={{ display: 'inline-flex', background: '#fff', border: '1px solid #D5DEE6', borderRadius: 8, padding: 3, gap: 2 }}>
+            {toggle.tabs.map((t) => {
+              const on = toggle.active === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => toggle.onChange(t.id)}
+                  style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: '5px 13px', borderRadius: 6, background: on ? '#16385C' : 'transparent', color: on ? '#fff' : '#5B7186' }}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       <div style={{ overflowX: 'auto' }}>
         <div style={{ minWidth: 900 }}>
@@ -119,30 +127,6 @@ function SeverityLegend({ items }: { items: { label: string; color: string }[] }
           <span style={{ fontSize: 11.5, color: '#43586B' }}>{b.label}</span>
         </div>
       ))}
-    </div>
-  );
-}
-
-function StalledCard({ title, rows, legend, labelW }: { title: string; rows: StackedRow[]; legend: { label: string; color: string }[]; labelW: number }) {
-  const scroll = labelW >= 150;
-  const list = (
-    <>
-      {rows.map((row) => (
-        <div key={row.label} style={{ display: 'grid', gridTemplateColumns: `${labelW}px 1fr 44px`, alignItems: 'center', gap: 10, marginBottom: 11 }}>
-          <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.label}</div>
-          <StackTrack row={row} height={11} track="#F5EEDF" />
-          <div style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.n}</div>
-        </div>
-      ))}
-    </>
-  );
-  return (
-    <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 252, boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        <div style={bigCardTitle}>{title}</div>
-        <SeverityLegend items={legend} />
-      </div>
-      {scroll ? <div style={{ maxHeight: 160, overflowY: 'auto', paddingRight: 6 }}>{list}</div> : list}
     </div>
   );
 }
@@ -235,6 +219,7 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
 
 export function PerformanceView({ d }: { d: Dashboard }) {
   const [tab, setTab] = useState<SubTab>('demand');
+  const [reqTab, setReqTab] = useState<'new' | 'overdue'>('new');
   return (
     <>
       <KpiStrip kpis={d.kpis} />
@@ -310,8 +295,40 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       {/* metric squares — click to re-break the practice chart */}
       <MetricExplorer squares={d.metricSquares} />
 
-      {/* newest requests table */}
-      <RequestTable title="Newest requests (last 30 days)" rows={d.newTable} metricLabel="Age (days)" daysColor="#0B6FA4" />
+      {/* severity of the overdue tail */}
+      <Card style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          <div style={bigCardTitle}>Overdue severity</div>
+          <SeverityLegend items={d.overdueBuckets} />
+        </div>
+        <div style={{ display: 'flex', height: 30, borderRadius: 6, overflow: 'hidden', border: '1px solid #E3E9EF' }}>
+          {d.overdueBuckets.map((b) => (
+            <div key={b.label} title={`${b.label}: ${b.n}`} style={{ width: `${b.pct}%`, background: b.color }} />
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-start', gap: 24, marginTop: 10, fontSize: 12.5 }}>
+          {d.overdueBuckets.map((b) => (
+            <span key={b.label} style={{ color: b.color, fontWeight: 700 }}>{b.n} · {b.label}</span>
+          ))}
+        </div>
+        <div style={whatSays}>
+          <strong style={{ color: '#5B7186' }}>What this says:</strong> {d.overdueSeverityNote}
+        </div>
+      </Card>
+
+      {/* newest / overdue requests table */}
+      <RequestTable
+        title={reqTab === 'new' ? 'Newest requests (last 30 days)' : 'Most overdue active requests'}
+        rows={reqTab === 'new' ? d.newTable : d.overdueTableFinal}
+        metricLabel={reqTab === 'new' ? 'Age (days)' : 'Days over'}
+        daysColor={reqTab === 'new' ? '#0B6FA4' : '#C0453F'}
+        footer={reqTab === 'new' ? undefined : 'Days over = today \u2212 the request\u2019s Expected Completion Date, counting only active requests (implementation status below 100%) whose target date has already passed.'}
+        toggle={{
+          tabs: [{ id: 'new', label: 'New requests' }, { id: 'overdue', label: 'Overdue requests' }],
+          active: reqTab,
+          onChange: (id) => setReqTab(id as 'new' | 'overdue'),
+        }}
+      />
 
       </>
       )}
@@ -333,75 +350,11 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       </>
       )}
 
-      {tab === 'overdue' && (
-      <>
-      {/* ===== SECTION 3: OVERDUE REQUESTS ===== */}
-      <SectionHeading n={3} title="Overdue requests" />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: 16, alignItems: 'start' }}>
-        <Hero bg="#FBF0EF" border="#F0D2CF" labelColor="#B0453F" value={d.overdue} valueColor="#C0453F" label="Should be closed by now" body="active requests are past their expected completion date but not yet at 100%." bodyColor="#8A5450" />
-        <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
-          <div style={cardTitle}>Overdue by region</div>
-          <BarList rows={d.overdueByRegion} labelWidth={64} trackBg="#F2EAE9" />
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 216, boxSizing: 'border-box' }}>
-          <div style={cardTitle}>Overdue by practice</div>
-          <div style={scrollBox}><BarList rows={d.overdueByPractice} labelWidth={150} trackBg="#F2EAE9" /></div>
-        </div>
-      </div>
-
-      {/* overdue severity stacked bar */}
-      <Card style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-          <div style={bigCardTitle}>Overdue severity — how far past the target date</div>
-          <SeverityLegend items={d.overdueBuckets} />
-        </div>
-        <div style={{ display: 'flex', height: 30, borderRadius: 6, overflow: 'hidden', border: '1px solid #E3E9EF' }}>
-          {d.overdueBuckets.map((b) => (
-            <div key={b.label} title={b.label} style={{ width: `${b.pct}%`, background: b.color }} />
-          ))}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 24, marginTop: 10, fontSize: 12.5 }}>
-          {d.overdueBuckets.map((b) => (
-            <span key={b.label} style={{ color: b.color, fontWeight: 700 }}>{b.n} · {b.label}</span>
-          ))}
-        </div>
-        <div style={whatSays}>
-          <strong style={{ color: '#5B7186' }}>What this says:</strong> most overdue requests are less than 30 days late. Action needed for the <strong style={{ color: '#C0453F' }}>&gt;60 days</strong> group is to review expected completion dates as targets are no longer credible and need re-planning or closure.
-        </div>
-      </Card>
-
-      {/* stalled by region + practice */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, alignItems: 'start', marginTop: 16 }}>
-        <StalledCard title="Stalled at 0% for 30+ days, by region" rows={d.stalledByRegionSev} legend={d.stalledSeverity} labelW={64} />
-        <StalledCard title="Stalled at 0% for 30+ days, by practice" rows={d.stalledByPracticeSev} legend={d.stalledSeverity} labelW={150} />
-      </div>
-
-      <div style={{ background: 'rgba(224,162,30,0.12)', border: '1px solid rgba(224,162,30,0.35)', borderRadius: 10, padding: '16px 20px', marginTop: 16 }}>
-        <div style={{ fontSize: 12.5, color: '#7A5B10', lineHeight: 1.55 }}>
-          <strong style={{ color: '#5B7186' }}>What this says:</strong> these <strong style={{ color: '#B0453F' }}>{d.stalledCount}</strong> requests were assigned 30 or more days ago and have shown no progress at all.
-        </div>
-      </div>
-
-      {/* most overdue table */}
-      <RequestTable
-        title="Most overdue active requests"
-        rows={d.overdueTableFinal}
-        metricLabel="Days over"
-        daysColor="#C0453F"
-        footer="Days over = today (3 Aug 2026) − the request’s Expected Completion Date, counting only active requests (implementation status below 100%) whose target date has already passed."
-      />
-
-      </>
-      )}
-
       {tab === 'workload' && (
       <>
       {/* ===== SECTION 4: WORKLOAD ===== */}
       <SectionHeading n={4} title="Workload: practices, regions & staff" bg="#16385C" />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, alignItems: 'start' }}>
-        <SolidWorkloadCard title="Requests by region" rows={d.byRegion} labelW={80} />
-        <SolidWorkloadCard title="Requests by practice" rows={d.byPractice} labelW={150} />
-      </div>
+      <SolidWorkloadCard title="Requests by practice" rows={d.byPractice} labelW={150} />
 
       {/* workload spread */}
       <Card style={{ marginTop: 16 }}>
@@ -452,8 +405,13 @@ export function PerformanceView({ d }: { d: Dashboard }) {
         </div>
         <div style={{ columnCount: 2, columnGap: 40, maxHeight: 340, overflowY: 'auto', paddingRight: 6 }}>
           {d.staffBars.map((row) => (
-            <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '185px 1fr 34px', alignItems: 'center', gap: 10, breakInside: 'avoid', marginBottom: 11 }}>
-              <div style={{ fontSize: 12, color: '#43586B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.label}</div>
+            <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '185px 1fr 34px', alignItems: 'center', gap: 10, breakInside: 'avoid', marginBottom: 13 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: '#43586B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.label}</div>
+                {row.sub && (
+                  <div style={{ fontSize: 10.5, color: '#9AA7B2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.sub}</div>
+                )}
+              </div>
               <StackTrack row={row} height={11} />
               <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.n}</div>
             </div>
