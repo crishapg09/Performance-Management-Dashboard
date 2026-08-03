@@ -32,6 +32,8 @@ export interface TACase {
   hd: 0 | 1;
   /** has objectives */
   ho: 0 | 1;
+  /** description is placeholder text ("test", "please add a description", …) */
+  ph: 0 | 1;
   /** expected-completion quarter label, e.g. "2026 Q2" (derived at load) */
   q?: string;
 }

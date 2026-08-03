@@ -53,7 +53,7 @@ function RequestTable({ title, rows, metricLabel, daysColor, footer, toggle }: {
       <div style={{ overflowX: 'auto' }}>
         <div style={{ minWidth: 900 }}>
           <div style={{ display: 'grid', gridTemplateColumns: tableCols, gap: 10, padding: '8px 22px', background: '#F6F8FA', borderTop: '1px solid #EDF1F4', borderBottom: '1px solid #EDF1F4', fontSize: 10.5, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7A8C9C', fontWeight: 700 }}>
-            <div>Case</div><div>Country</div><div>Description</div><div>Practice</div><div>Exp. completion</div><div>Status</div><div>State</div><div>TA lead</div><div style={{ textAlign: 'right' }}>{metricLabel}</div>
+            <div>Case</div><div>Country</div><div>Details/Description</div><div>Practice</div><div>Exp. completion</div><div>Status</div><div>State</div><div>TA lead</div><div style={{ textAlign: 'right' }}>{metricLabel}</div>
           </div>
           <div style={{ maxHeight: 420, overflowY: 'auto' }}>
             {rows.map((r) => (

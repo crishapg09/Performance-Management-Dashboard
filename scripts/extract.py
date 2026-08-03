@@ -22,6 +22,7 @@ Requires: openpyxl  (pip install openpyxl)
 import sys
 import os
 import re
+import html
 import json
 import math
 import datetime
@@ -35,7 +36,7 @@ EXPECTED_HEADER = (
     'Description', 'Objectives', 'Language', 'Modality',
     'Global Practice and Cross Sectoral Teams', 'Primary Programme Offer',
     'Assigned to', 'Implementation Status', 'Created', 'Opened', 'Updated',
-    'Resolved', 'Closed', 'Resolution code', 'State',
+    'Resolved', 'Closed', 'Resolution code', 'State', 'Details/Description',
 )
 
 # Requests with these resolution codes are administrative non-work — voided,
@@ -53,6 +54,35 @@ C_SHORT, C_DESC, C_OBJ, C_MODALITY = 8, 9, 10, 12
 C_PRACTICE, C_OFFER, C_LEAD, C_STATUS = 13, 14, 15, 16
 C_CREATED, C_OPENED, C_UPDATED, C_RESOLVED, C_CLOSED = 17, 18, 19, 20, 21
 C_RESOLUTION, C_STATE = 22, 23  # State is captured in the export but unused here
+C_DETAILS = 24  # rich-text "Details/Description" — the authoritative description
+
+# Placeholder text people type instead of a real description. Compared against
+# the cleaned, lower-cased value; PREFIXES also catch "please add a description
+# for this TA request" and friends.
+PLACEHOLDER_EXACT = {
+    '', 'na', 'n/a', 'n.a.', 'n', 'nil', 'none', 'undefined', 'missing', 'tbd', 'tba',
+    'test', 'testing', 'tests', '.', '-', '--', '...', 'x', 'xx', 'xxx', '?', 'pending',
+}
+PLACEHOLDER_PREFIXES = (
+    'please add', 'add description', 'add decription', 'add descripton',
+    'please provide more', 'to be added', 'to be defined', 'to be confirmed',
+    'description to follow', 'test ', 'testing ',
+)
+
+
+def clean_html(v):
+    """Details/Description is rich text: strip tags and decode entities."""
+    if v is None:
+        return ''
+    s = re.sub(r'<br\s*/?>|</p>|</div>|</li>', ' ', str(v))
+    s = re.sub(r'<[^>]+>', ' ', s)
+    s = html.unescape(s)
+    return re.sub(r'\s+', ' ', s).strip()
+
+
+def is_placeholder(text):
+    n = text.lower().strip().rstrip('.!:;,').strip()
+    return n in PLACEHOLDER_EXACT or n.startswith(PLACEHOLDER_PREFIXES)
 
 EPOCH = datetime.datetime(1899, 12, 30)  # Excel serial-date origin
 
@@ -96,12 +126,14 @@ def build(r):
         'practice': s(r[C_PRACTICE]), 'offer': s(r[C_OFFER]), 'modality': s(r[C_MODALITY]),
         'status': s(r[C_STATUS]), 'lead': s(r[C_LEAD]),
         'reqFor': s(r[C_REQFOR]), 'desc': s(r[C_SHORT]),
-        # long Description, falling back to the short description when blank
-        'full': s(r[C_DESC]) if r[C_DESC] else s(r[C_SHORT]),
+        # Details/Description (rich text, cleaned), falling back to the short one
+        'full': clean_html(r[C_DETAILS]) or s(r[C_SHORT]),
         'xs': serial(r[C_XS]), 'xc': serial(r[C_XC]),
         'cr': serial(r[C_CREATED]), 'op': serial(r[C_OPENED]), 'up': serial(r[C_UPDATED]),
         'rs': serial(r[C_RESOLVED]), 'cl': serial(r[C_CLOSED]),
-        'hd': 1 if r[C_DESC] else 0, 'ho': 1 if r[C_OBJ] else 0,
+        'hd': 1 if clean_html(r[C_DETAILS]) else 0, 'ho': 1 if r[C_OBJ] else 0,
+        # 1 when the description is placeholder text rather than a real one
+        'ph': 1 if is_placeholder(clean_html(r[C_DETAILS])) else 0,
     }
 
 
@@ -121,10 +153,6 @@ def update_labels(app_dir, today_serial, n_rows):
     edits = [
         ('src/components/Header.tsx',
          r'as of \d+ \w+ \d{4}', f'as of {today_str}'),
-        ('src/components/PerformanceView.tsx',
-         r'between \d+ \w+ and \d+ \w+ \d{4}', f'between {win_short} and {today_str}'),
-        ('src/components/PerformanceView.tsx',
-         r'today \(\d+ \w+ \d{4}\)', f'today ({today_str})'),
         ('src/lib/dashboard.ts',
          r'new since \d+ \w+ \d{4}', f'new since {win_full}'),
         ('src/data/cases.ts',

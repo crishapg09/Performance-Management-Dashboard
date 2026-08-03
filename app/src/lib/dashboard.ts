@@ -502,6 +502,9 @@ export interface DataQuality {
   flagCount: string;
   flagTable: DqTableRow[];
   dupCount: string;
+  /** descriptions that are placeholder text, on requests still in play */
+  placeholderCount: string;
+  placeholderTable: DqTableRow[];
   // ③ Overdue, at-risk & closure
   overdueCount: string;
   overdueBuckets: BucketRow[];
@@ -605,7 +608,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     ['Objectives', (c) => !!c.ho],
     ['TA lead', (c) => !!c.lead],
     ['Expected completion', (c) => c.xc != null],
-    ['Description', (c) => !!c.hd],
+    ['Details/Description', (c) => !!c.hd],
     ['Modality', (c) => !!c.modality],
     ['Programme offer', (c) => !!c.offer],
   ];
@@ -649,7 +652,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     !c.ho ? 'no objectives'
       : !c.lead ? 'no TA lead'
       : c.xc == null ? 'no target date'
-      : !c.hd ? 'no description'
+      : !c.hd ? 'no details/description'
       : !c.modality ? 'no modality'
       : !c.offer ? 'no offer'
       : c.xs != null && (c.xc as number) < (c.xs as number) ? 'target before start'
@@ -667,6 +670,17 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
       else seen[k] = 1;
     }
   }
+
+  // Placeholder descriptions ("test", "please add a description", "N/A", …) on
+  // requests that have not been discontinued — junk text that passes a
+  // "field is filled" check but tells a reader nothing.
+  const phOrder = ['Unassigned', '0%', '25%', '50%', '75%', '100%'];
+  const placeholders = co
+    .filter((c) => c.ph === 1 && c.status !== 'Discontinued')
+    .sort((a, b) => phOrder.indexOf(b.status) - phOrder.indexOf(a.status));
+  const placeholderTable = placeholders
+    .slice(0, 12)
+    .map((c) => row(c, Math.round(today - (c.up ?? c.cr ?? c.op ?? today)) + 'd', '#C0453F'));
 
   // ---- ③ overdue, at-risk & closure ----
   const overdueSet = activeCO
@@ -732,6 +746,8 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     flagCount: fmtNum(flagRecords.length),
     flagTable,
     dupCount: fmtNum(dupCount),
+    placeholderCount: fmtNum(placeholders.length),
+    placeholderTable,
     overdueCount: fmtNum(overdueSet.length),
     overdueBuckets,
     atRiskCount: fmtNum(atRisk.length),

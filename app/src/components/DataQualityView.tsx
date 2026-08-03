@@ -151,7 +151,7 @@ function DqTable({ title, count, rows, metricLabel, footer, toggle }: { title: s
       <div style={{ overflowX: 'auto' }}>
         <div className="dq-inner" style={{ minWidth: 940 }}>
           <div className="dq-grid" style={{ display: 'grid', gridTemplateColumns: dqCols, gap: 10, padding: '8px 22px', background: '#F6F8FA', borderTop: '1px solid #EDF1F4', borderBottom: '1px solid #EDF1F4', fontSize: 10.5, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7A8C9C', fontWeight: 700 }}>
-            <div>Case</div><div>Country</div><div>Description</div><div>Region</div><div>Practice</div><div>Status</div><div>TA lead</div><div style={{ textAlign: 'right' }}>{metricLabel}</div>
+            <div>Case</div><div>Country</div><div>Details/Description</div><div>Region</div><div>Practice</div><div>Status</div><div>TA lead</div><div style={{ textAlign: 'right' }}>{metricLabel}</div>
           </div>
           <div style={{ maxHeight: 360, overflowY: 'auto' }}>
             {rows.length === 0 && <div style={{ padding: '18px 22px', fontSize: 12.5, color: '#9AA7B2' }}>None in the current filter. 🎉</div>}
@@ -371,6 +371,16 @@ export function DataQualityView({ d }: { d: Dashboard }) {
           <CheckRows items={dq.deliveryFlags} />
         </Card>
         <Card style={{ padding: '18px 20px' }}>
+          <div style={bigTitle}>Placeholder descriptions</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 12 }}>
+            <div style={{ fontSize: 34, fontWeight: 700, color: '#C0453F', fontVariantNumeric: 'tabular-nums' }}>{dq.placeholderCount}</div>
+            <div style={{ fontSize: 12.5, color: '#7A8C9C' }}>
+              live requests whose Details/Description is filler — &ldquo;test&rdquo;, &ldquo;N/A&rdquo;, &ldquo;please add
+              a description&rdquo;. They pass a &ldquo;field is filled&rdquo; check but tell a reader nothing.
+            </div>
+          </div>
+        </Card>
+        <Card style={{ padding: '18px 20px' }}>
           <div style={bigTitle}>Possible duplicate requests</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 12 }}>
             <div style={{ fontSize: 34, fontWeight: 700, color: '#E0A21E', fontVariantNumeric: 'tabular-nums' }}>{dq.dupCount}</div>
@@ -380,6 +390,14 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       </div>
 
       <DqTable title="Started records needing cleanup" count={dq.flagCount} rows={dq.flagTable} metricLabel="Missing / issue" />
+
+      <DqTable
+        title="Requests with a placeholder Details/Description"
+        count={dq.placeholderCount}
+        rows={dq.placeholderTable}
+        metricLabel="Not updated"
+        footer="Discontinued requests are excluded — these are all still live. Sorted by implementation status, so the ones furthest along appear first; the last column shows how long the record has gone without an update."
+      />
 
       </div>
       )}
