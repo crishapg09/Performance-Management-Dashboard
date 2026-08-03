@@ -16,7 +16,6 @@ const bigCardTitle: React.CSSProperties = { fontSize: 13.5, fontWeight: 700 };
 const whatSays: React.CSSProperties = {
   fontSize: 12, color: '#8A98A6', lineHeight: 1.55, marginTop: 16, borderTop: '1px solid #F1F4F7', paddingTop: 12,
 };
-const scrollBox: React.CSSProperties = { maxHeight: 150, overflowY: 'auto', paddingRight: 6 };
 
 const tableCols = '100px 110px 1.5fr 124px 96px 64px 74px 120px 80px';
 
@@ -92,16 +91,15 @@ function StackTrack({ row, height, track = '#EEF2F6' }: { row: StackedRow; heigh
 }
 
 function SolidWorkloadCard({ title, rows, labelW }: { title: string; rows: StackedRow[]; labelW: number }) {
-  const scroll = labelW >= 150;
   const body = (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: `${labelW}px 1fr 38px 74px`, gap: 10, marginBottom: 9, fontSize: 10, letterSpacing: '.05em', textTransform: 'uppercase', color: '#9AA7B2', fontWeight: 700 }}>
         <div /><div /><div style={{ textAlign: 'right' }}>TAs</div><div style={{ textAlign: 'right' }}>Leads</div>
       </div>
-      <div style={scroll ? scrollBox : undefined}>
+      <div>
         {rows.map((row) => (
           <div key={row.label} style={{ display: 'grid', gridTemplateColumns: `${labelW}px 1fr 38px 74px`, alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.label}</div>
+            <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600 }}>{row.label}</div>
             <div style={{ height: 10, background: '#EEF2F6', borderRadius: 5 }}><div style={{ height: '100%', width: `${row.barPct}%`, background: '#0B6FA4', borderRadius: 5 }} /></div>
             <div style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.n}</div>
             <div style={{ fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#0B6FA4', fontWeight: 700 }}>{row.leads}</div>
@@ -111,7 +109,7 @@ function SolidWorkloadCard({ title, rows, labelW }: { title: string; rows: Stack
     </>
   );
   return (
-    <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', height: 238, boxSizing: 'border-box' }}>
+    <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', boxSizing: 'border-box' }}>
       <div style={{ ...bigCardTitle, marginBottom: 16 }}>{title}</div>
       {body}
     </div>
@@ -354,7 +352,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       <>
       {/* ===== SECTION 4: WORKLOAD ===== */}
       <SectionHeading n={4} title="Workload: practices, regions & staff" bg="#16385C" />
-      <SolidWorkloadCard title="Requests by practice" rows={d.byPractice} labelW={150} />
+      <SolidWorkloadCard title="Requests by practice" rows={d.byPractice} labelW={225} />
 
       {/* workload spread */}
       <Card style={{ marginTop: 16 }}>

@@ -139,7 +139,9 @@ export interface Dashboard {
   dq: DataQuality;
 }
 
-const notOther = (key: keyof TACase, c: TACase) => !(key === 'practice' && c.practice === 'Other');
+/** Practices kept out of the breakdown charts. */
+const HIDDEN_PRACTICES = new Set(['Other', 'Innovation']);
+const notOther = (key: keyof TACase, c: TACase) => !(key === 'practice' && HIDDEN_PRACTICES.has(c.practice));
 
 export function computeDashboard(
   cases: TACase[],
