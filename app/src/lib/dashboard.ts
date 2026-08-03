@@ -347,6 +347,13 @@ export function computeDashboard(
     ['overdue', 'Overdue', '#C0453F', 'past their expected completion date', overdueSet],
   ];
   const sqMax = Math.max(1, ...squareDefs.map(([, , , , s]) => s.length));
+  // How many requests each practice has in total, so a practice's bar can show
+  // what share of ITS OWN work the metric represents (not share of the metric).
+  const practiceTotals = new Map<string, number>();
+  for (const c of F) {
+    const k = c.practice || '—';
+    practiceTotals.set(k, (practiceTotals.get(k) ?? 0) + 1);
+  }
   const metricSquares: MetricSquare[] = squareDefs.map(([id, label, color, sub, set]) => ({
     id,
     label,
@@ -356,7 +363,10 @@ export function computeDashboard(
     sub,
     pctLabel: total ? pct(set.length, total) + '%' : '—',
     side: Math.round(72 + 86 * Math.sqrt(set.length / sqMax)),
-    byPractice: toBars(groupBy(set.filter((c) => c.practice !== 'Other'), 'practice'), color, 15),
+    byPractice: toBars(groupBy(set.filter((c) => c.practice !== 'Other'), 'practice'), color, 15).map((r) => {
+      const denom = practiceTotals.get(r.label) ?? 0;
+      return { ...r, share: denom ? pct(r.n, denom) + '%' : '—' };
+    }),
   }));
 
   const viewTabs: ToggleButton[] =([['overview', 'Performance'], ['quality', 'Data Quality Review']] as [ViewId, string][]).map(([v, label]) => ({

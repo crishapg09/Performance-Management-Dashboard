@@ -16,7 +16,13 @@ export function BarList({ rows, labelWidth, trackBg, barColor, labelWeight = 600
       {rows.map((row) => (
         <div
           key={row.label}
-          style={{ display: 'grid', gridTemplateColumns: `${labelWidth}px 1fr 34px`, alignItems: 'center', gap: 10, marginBottom: 9 }}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `${labelWidth}px 1fr 34px${row.share ? ' 46px' : ''}`,
+            alignItems: 'center',
+            gap: 10,
+            marginBottom: 9,
+          }}
         >
           <div
             style={{
@@ -34,6 +40,14 @@ export function BarList({ rows, labelWidth, trackBg, barColor, labelWeight = 600
             <div style={{ height: '100%', width: `${row.pct}%`, background: barColor || row.color, borderRadius: 5 }} />
           </div>
           <div style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.n}</div>
+          {row.share && (
+            <div
+              title="share of this practice's own requests"
+              style={{ fontSize: 12, fontWeight: 700, textAlign: 'right', color: barColor || row.color, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {row.share}
+            </div>
+          )}
         </div>
       ))}
     </>

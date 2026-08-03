@@ -8,6 +8,8 @@ export interface BarRow {
 export interface ColoredBarRow extends BarRow {
   color: string;
   pct: number;
+  /** optional context share, e.g. "31%" of that group's own total */
+  share?: string;
 }
 
 export function groupBy(cases: TACase[], key: keyof TACase): BarRow[] {

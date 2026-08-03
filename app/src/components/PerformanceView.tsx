@@ -164,7 +164,7 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
         <div style={{ fontSize: 11.5, color: '#9AA7B2', marginTop: 4, marginBottom: 16 }}>
           square size reflects the number of TAs · click one to break it down by practice
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end', minHeight: maxSide + 34 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, alignItems: 'flex-end', justifyContent: 'center', minHeight: maxSide + 34 }}>
           {squares.map((s) => {
             const on = s.id === active.id;
             return (
