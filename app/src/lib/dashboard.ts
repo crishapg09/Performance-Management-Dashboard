@@ -383,7 +383,7 @@ export function computeDashboard(
         { value: fmtNum(routineN), color: '#0B6FA4', sub: (total ? pct(routineN, total) + '%' : '—') + ' routine' },
       ],
     },
-    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: ofAll(recentSet.length) + ' · new since 6 Jul 2026', accent: '#1CABE2', color: '#0F2238' },
+    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: ofAll(recentSet.length) + ' · new since 7 Jul 2026', accent: '#1CABE2', color: '#0F2238' },
     { label: 'Active & on track', value: fmtNum(onTrack), sub: ofAll(onTrack) + ' · in progress, not overdue', accent: '#3E9CD6', color: '#3E9CD6' },
     { label: 'Completed', value: fmtNum(doneN), sub: ofAll(doneN) + ' reached 100%', accent: '#2E7D5B', color: '#2E7D5B' },
     { label: 'Overdue', value: fmtNum(overdueSet.length), sub: ofAll(overdueSet.length) + ' · past target date', accent: '#C0453F', color: '#C0453F' },
