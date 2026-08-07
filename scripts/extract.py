@@ -3,7 +3,11 @@
 Extract the TA case export into the app's data files.
 
 Usage:
-    python scripts/extract.py path/to/sn_customerservice_case.xlsx
+    python scripts/extract.py path/to/sn_customerservice_case.xlsx [YYYY-MM-DD]
+
+The optional second argument sets the "as of" date. Without it the date is
+derived from the latest activity in the export, which lags when you pull the
+file the morning after the last record was touched.
 
 What it does:
   1. Reads the ServiceNow "Case Report" export (first sheet).
@@ -175,9 +179,10 @@ def update_labels(app_dir, today_serial, n_rows):
 
 
 def main():
-    if len(sys.argv) != 2:
-        raise SystemExit('Usage: python scripts/extract.py <export.xlsx>')
+    if len(sys.argv) not in (2, 3):
+        raise SystemExit('Usage: python scripts/extract.py <export.xlsx> [YYYY-MM-DD]')
     src = sys.argv[1]
+    as_of_override = sys.argv[2] if len(sys.argv) == 3 else None
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     app_dir = os.path.join(repo_root, 'app')
     data_dir = os.path.join(app_dir, 'src', 'data')
@@ -189,8 +194,12 @@ def main():
     records = [build(r) for r in kept]
 
     # "as of" date = floor of the latest activity timestamp among kept records
-    stamps = [serial(r[i]) for r in kept for i in (C_CREATED, C_OPENED, C_UPDATED)]
-    today = math.floor(max(v for v in stamps if v is not None))
+    if as_of_override:
+        d = datetime.datetime.strptime(as_of_override, '%Y-%m-%d')
+        today = int((d - EPOCH).days)
+    else:
+        stamps = [serial(r[i]) for r in kept for i in (C_CREATED, C_OPENED, C_UPDATED)]
+        today = math.floor(max(v for v in stamps if v is not None))
 
     with open(os.path.join(data_dir, 'cases.json'), 'w', encoding='utf-8') as f:
         json.dump(records, f, ensure_ascii=False, separators=(',', ':'))
