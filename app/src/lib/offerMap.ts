@@ -24,8 +24,10 @@ function norm(s: string | null | undefined): string {
 
 const HUMANITARIAN = 'Humanitarian Action and Resilience';
 const WORKFORCE = 'Workforce Development and Institution Building';
-const POLICY = 'Policy Reform and Programme Design';
+// note: two spaces after "Reform" — the canonical spelling used downstream
+const POLICY = 'Policy Reform  and Programme Design';
 const SCALE_UP = 'Programme Management Scale Up Support';
+const NOT_SPECIFIED = 'Not specified';
 
 const LOOKUP: Record<string, string> = {
   'digital and infrastructure': 'Digital and Infrastructure',
@@ -48,9 +50,11 @@ const LOOKUP: Record<string, string> = {
   'programme management scale up': SCALE_UP,
   'programme management scale up support': SCALE_UP,
 
-  'programme offer to governments and other stakeholders': 'NA',
-  'n/a': 'NA',
-  '': 'Not specified',
+  // "offer to governments", an explicit N/A and a blank all mean the same
+  // thing for reporting: no programme offer was recorded.
+  'programme offer to governments and other stakeholders': NOT_SPECIFIED,
+  'n/a': NOT_SPECIFIED,
+  '': NOT_SPECIFIED,
 };
 
 /** Canonical Programme Offer for a raw "Primary Programme Offer" value. */
