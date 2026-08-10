@@ -36,4 +36,6 @@ export interface TACase {
   ph: 0 | 1;
   /** expected-completion quarter label, e.g. "2026 Q2" (derived at load) */
   q?: string;
+  /** canonical Programme Offer, folded from `offer` (derived at load) */
+  programmeOffer?: string;
 }

@@ -3,6 +3,7 @@ import rawToday from './today.json';
 import type { TACase } from './types';
 import { quarter } from '../lib/dates';
 import { mapOffice } from '../lib/regionMap';
+import { mapOffer } from '../lib/offerMap';
 
 /**
  * Source: UNICEF TA case export, Jan–Jul 2026 (4,523 rows, as of 10 Aug 2026).
@@ -13,7 +14,7 @@ import { mapOffice } from '../lib/regionMap';
  */
 export const RAW_CASES = (rawCases as unknown as TACase[]).map((c) => {
   const { office, region } = mapOffice(c.office);
-  return { ...c, office, region, q: quarter(c.xc) };
+  return { ...c, office, region, q: quarter(c.xc), programmeOffer: mapOffer(c.offer) };
 });
 
 /**

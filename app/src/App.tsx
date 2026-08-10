@@ -21,6 +21,7 @@ function App() {
     setFilters((f) => ({ ...f, regions: v === 'All' ? [] : [v], office: 'All' }));
   const onPractice = (v: string) => setFilters((f) => ({ ...f, practice: v }));
   const onOffice = (v: string) => setFilters((f) => ({ ...f, office: v }));
+  const onProgrammeOffer = (v: string) => setFilters((f) => ({ ...f, programmeOffer: v }));
   const onToggleStatus = (v: string) =>
     setFilters((f) => ({ ...f, statuses: f.statuses.includes(v) ? f.statuses.filter((x) => x !== v) : [...f.statuses, v] }));
   const onToggleQuarter = (v: string) =>
@@ -54,6 +55,9 @@ function App() {
         office={filters.office}
         officeOpts={d.officeOpts}
         onOffice={onOffice}
+        programmeOffer={filters.programmeOffer}
+        offerOpts={d.offerOpts}
+        onProgrammeOffer={onProgrammeOffer}
         statusChips={d.statusChips}
         onToggleStatus={onToggleStatus}
         quarterChips={d.quarterChips}

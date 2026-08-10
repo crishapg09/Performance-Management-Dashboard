@@ -35,6 +35,9 @@ interface FilterBarProps {
   office: string;
   officeOpts: SelectOption[];
   onOffice: (v: string) => void;
+  programmeOffer: string;
+  offerOpts: SelectOption[];
+  onProgrammeOffer: (v: string) => void;
   statusChips: StatusChip[];
   onToggleStatus: (v: string) => void;
   quarterChips: ToggleButton[];
@@ -56,6 +59,9 @@ export function FilterBar({
   office,
   officeOpts,
   onOffice,
+  programmeOffer,
+  offerOpts,
+  onProgrammeOffer,
   statusChips,
   onToggleStatus,
   quarterChips,
@@ -181,6 +187,23 @@ export function FilterBar({
             >
               <option value="All">All countries</option>
               {officeOpts.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Programme offer select */}
+          <div>
+            <div style={labelStyle}>Programme offer</div>
+            <select
+              value={programmeOffer}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => onProgrammeOffer(e.target.value)}
+              style={{ ...selectStyle, minWidth: 210 }}
+            >
+              <option value="All">All programme offers</option>
+              {offerOpts.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>

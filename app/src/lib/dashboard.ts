@@ -12,6 +12,7 @@ export interface FilterState {
   regions: string[];
   practice: string;
   office: string;
+  programmeOffer: string;
   statuses: string[];
   quarters: string[];
   lead: string;
@@ -23,6 +24,7 @@ export const INITIAL_FILTERS: FilterState = {
   regions: [],
   practice: 'All',
   office: 'All',
+  programmeOffer: 'All',
   statuses: [],
   quarters: [],
   lead: 'All',
@@ -33,6 +35,7 @@ export function matchesFilters(c: TACase, s: FilterState): boolean {
   if (s.regions.length && !s.regions.includes(c.region)) return false;
   if (s.practice !== 'All' && c.practice !== s.practice) return false;
   if (s.office !== 'All' && c.office !== s.office) return false;
+  if (s.programmeOffer !== 'All' && c.programmeOffer !== s.programmeOffer) return false;
   if (s.statuses.length && !s.statuses.includes(c.status)) return false;
   if (s.quarters.length && !s.quarters.includes(c.q || '')) return false;
   if (s.lead !== 'All' && c.lead !== s.lead) return false;
@@ -101,6 +104,7 @@ export interface Dashboard {
   regionOpts: SelectOption[];
   practiceOpts: SelectOption[];
   officeOpts: SelectOption[];
+  offerOpts: SelectOption[];
 
   // Performance
   kpis: KPI[];
@@ -207,7 +211,8 @@ export function computeDashboard(
   // filter title
   const anyFilter =
     state.type !== 'All' || state.regions.length > 0 || state.practice !== 'All' || state.office !== 'All' ||
-    state.statuses.length > 0 || state.quarters.length > 0 || state.lead !== 'All';
+    state.statuses.length > 0 || state.quarters.length > 0 || state.lead !== 'All' ||
+    state.programmeOffer !== 'All';
   let filterTitle: string;
   if (!anyFilter) {
     filterTitle = 'All TA requests — every region, practice & status';
@@ -217,6 +222,7 @@ export function computeDashboard(
     parts.push(state.regions.length ? state.regions[0] : 'all regions');
     if (state.practice !== 'All') parts.push(state.practice);
     if (state.office !== 'All') parts.push(state.office);
+    if (state.programmeOffer !== 'All') parts.push(state.programmeOffer);
     if (state.statuses.length) parts.push(state.statuses.join(', ') + (state.statuses.length > 1 ? ' status' : ' implemented'));
     if (state.quarters.length) parts.push('due ' + state.quarters.join(', '));
     if (state.lead !== 'All') parts.push('led by ' + state.lead);
@@ -413,6 +419,7 @@ export function computeDashboard(
     practiceOpts: optionCounts(cases, 'practice').map(([v, n]) => ({ value: v, label: `${v} (${n})` })),
     // Country options are scoped to the selected region so the list only shows
     // countries within that region.
+    offerOpts: optionCounts(cases, 'programmeOffer').map(([v, n]) => ({ value: v, label: `${v} (${n})` })),
     officeOpts: optionCounts(
       state.regions.length ? cases.filter((c) => state.regions.includes(c.region)) : cases,
       'office',
