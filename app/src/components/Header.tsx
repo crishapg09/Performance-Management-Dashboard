@@ -38,7 +38,7 @@ export function Header({ metaTotal, isQuality, coFrom, coUnassigned, coverage }:
               <span style={{ fontWeight: 700, color: '#0F2238' }}>{metaTotal}</span> CO requests in source
             </div>
           )}
-          <div>{coverage} &middot; as of 10 Aug 2026</div>
+          <div>{coverage} &middot; as of 11 Aug 2026</div>
         </div>
       </div>
     </div>
