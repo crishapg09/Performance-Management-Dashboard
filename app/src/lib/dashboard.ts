@@ -473,7 +473,7 @@ export interface DataQuality {
   setupAging: BucketRow[];
   stalledCount: string;
   reviewByPractice: ReviewPracticeRow[];
-  stalledTable: DqTableRow[];
+  reviewTable: DqTableRow[];
   readyCount: string;
   readyOf: string;
   setupContradictions: CheckItem[];
@@ -583,10 +583,11 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     ...r,
     barPct: Math.round((r.n / reviewMax) * 100),
   }));
-  const stalledTable = [...stalledSetup]
+  // Every request in the review phase, longest-waiting first. Ones past the
+  // stall threshold keep the red metric so they still stand out in the list.
+  const reviewTable = [...setupSet]
     .sort((a, b) => stallDays(b) - stallDays(a))
-    .slice(0, 12)
-    .map((c) => row(c, stallDays(c) + 'd', '#C0453F'));
+    .map((c) => row(c, stallDays(c) + 'd', isStalled(c) ? '#C0453F' : '#7A8C9C'));
 
   const atZero = setupSet.filter((c) => c.status === '0%');
   const ready = atZero.filter((c) => c.ho && c.lead && c.xc != null);
@@ -598,8 +599,10 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
 
 
   const stallNote =
-    'Days stalled = today (' + formatDate(today) + ') − last Updated date (for Unassigned, − the date received). ' +
-    'Stage-transition dates are not captured yet, so this is a proxy for time in the current stage.';
+    'Every request still in review, longest wait first. Days waiting = today (' + formatDate(today) + ') − last ' +
+    'Updated date (for Unassigned, − the date received); those past the stall threshold — Unassigned over 14 days, ' +
+    '0% not updated in 30 — are shown in red. Stage-transition dates are not captured yet, so this is a proxy for ' +
+    'time in the current stage.';
 
   // ---- ② started & in delivery (25%+) ----
   const delN = delivery.length;
@@ -725,7 +728,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     setupAging,
     stalledCount: fmtNum(stalledSetup.length),
     reviewByPractice,
-    stalledTable,
+    reviewTable,
     readyCount: fmtNum(ready.length),
     readyOf: fmtNum(atZero.length),
     setupContradictions,

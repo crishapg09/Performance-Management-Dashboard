@@ -325,7 +325,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         <ReviewByPractice rows={dq.reviewByPractice} />
       </Card>
 
-      <DqTable title="Most stalled setup requests" count={dq.stalledCount} rows={dq.stalledTable} metricLabel="Days stalled" footer={dq.stallNote} />
+      <DqTable title="All requests in review" count={dq.setupTotal} rows={dq.reviewTable} metricLabel="Days waiting" footer={dq.stallNote} />
 
       </div>
       )}
@@ -408,7 +408,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16 }}>
         <HeroCard bg="#FBF0EF" border="#F0D2CF" labelColor="#B0453F" value={dq.overdueCount} valueColor="#C0453F" label="Overdue" body="active requests past their expected completion date." />
-        <HeroCard bg="#FCF6EA" border="#F0E2C2" labelColor="#B77A10" value={dq.atRiskCount} valueColor="#B77A10" label="At risk (next 30 days)" body="active requests whose expected completion date is within 30 days." />
+        <HeroCard bg="#FCF6EA" border="#F0E2C2" labelColor="#B77A10" value={dq.atRiskCount} valueColor="#B77A10" label="Upcoming closure (next 30 days)" body="active requests whose expected completion date is within 30 days." />
       </div>
 
       <Card style={{ marginTop: 16 }}>
