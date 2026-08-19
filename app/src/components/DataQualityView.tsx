@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Dashboard, CheckItem, CompletenessRow, BucketRow, DqTableRow, PracticeStackRow } from '../lib/dashboard';
+import type { Dashboard, CheckItem, CompletenessRow, BucketRow, DqTableRow, PracticeStackRow, StackPhase } from '../lib/dashboard';
 import { Card } from './Card';
 import { KpiStrip } from './KpiStrip';
 
@@ -14,6 +14,8 @@ const PRINT_CSS = `
 @media print {
   @page { size: letter portrait; margin: 0.5in; }
   html, body { background: #fff !important; }
+  /* the app shell paints a grey page background inline — drop it for print */
+  body > div, #root, #root > div { background: #fff !important; }
   /* force bar/chip/background colours to print (browsers strip them by default) */
   .dq-print, .dq-print * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .scr-only { display: none !important; }
@@ -21,9 +23,18 @@ const PRINT_CSS = `
      everything prints; leave overflow:hidden ellipsis cells truncating. */
   .dq-print [style*="auto"] { overflow: visible !important; max-height: none !important; }
   .dq-inner { min-width: 0 !important; width: 100% !important; }
-  /* tighter table columns so all 8 fit a letter page (screen keeps the wide grid) */
-  .dq-print .dq-grid { grid-template-columns: 74px 74px 1fr 48px 84px 50px 90px 60px !important; gap: 6px !important; padding-left: 12px !important; padding-right: 12px !important; font-size: 11px !important; }
   .dq-page + .dq-page { break-before: page; }
+  /* the record-level table is a screen-only drill-down — the printed pack is
+     cards and charts only. Hidden here as well as in the markup, so printing
+     straight from the browser menu gives the same result as the button. */
+  .dq-tablewrap { display: none !important; }
+  /* never split a card across a page: keep each row of cards, and each card
+     inside it, whole — otherwise blocks like "Ready to advance" get cut in half */
+  .dq-print .dq-page > div,
+  .dq-print .dq-page > div > div { break-inside: avoid; page-break-inside: avoid; }
+  /* stack the two-up card grids into a single column so nothing is squeezed */
+  .dq-print .dq-page > div[style*="grid"] { grid-template-columns: 1fr !important; }
+  .dq-print .dq-page { padding-bottom: 2px; }
 }
 `;
 
@@ -75,7 +86,12 @@ const STACK_KEYS: { key: 'review' | 'delivery' | 'overdue'; label: string; color
   { key: 'overdue', label: 'Overdue', color: '#C0453F' },
 ];
 
-function PracticeStack({ rows }: { rows: PracticeStackRow[] }) {
+/** Which practice/phase cell of the chart is currently open in the table below. */
+interface StackSel { practice: string; phase: StackPhase; }
+
+function PracticeStack({ rows, sel, onPick, interactive }: {
+  rows: PracticeStackRow[]; sel: StackSel | null; onPick: (s: StackSel | null) => void; interactive: boolean;
+}) {
   if (!rows.length) return <div style={{ fontSize: 12.5, color: '#9AA7B2' }}>None in the current filter.</div>;
   return (
     <div>
@@ -84,9 +100,31 @@ function PracticeStack({ rows }: { rows: PracticeStackRow[] }) {
           <div title={r.label} style={{ fontSize: 12, color: '#43586B', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</div>
           <div style={{ height: 14, background: '#EEF2F6', borderRadius: 7, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${r.barPct}%`, display: 'flex', borderRadius: 7, overflow: 'hidden' }}>
-              {STACK_KEYS.map((k) => (
-                <div key={k.key} title={`${r[k.key]} ${k.label.toLowerCase()}`} style={{ width: `${(r[k.key] / r.n) * 100}%`, background: k.color }} />
-              ))}
+              {STACK_KEYS.map((k) => {
+                const n = r[k.key];
+                if (!n) return null;
+                const on = !!sel && sel.practice === r.label && sel.phase === k.key;
+                const dim = !!sel && !on;
+                const title = `${n} ${k.label.toLowerCase()}${interactive ? ' — click to list them' : ''}`;
+                const style: React.CSSProperties = {
+                  width: `${(n / r.n) * 100}%`,
+                  background: k.color,
+                  opacity: dim ? 0.32 : 1,
+                  boxShadow: on ? 'inset 0 0 0 2px #0F2238' : undefined,
+                  transition: 'opacity .12s',
+                };
+                return interactive ? (
+                  <button
+                    key={k.key}
+                    onClick={() => onPick(on ? null : { practice: r.label, phase: k.key })}
+                    aria-label={title}
+                    title={title}
+                    style={{ ...style, border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                  />
+                ) : (
+                  <div key={k.key} title={title} style={style} />
+                );
+              })}
             </div>
           </div>
           <div
@@ -137,7 +175,9 @@ interface TableToggle {
   onChange: (id: string) => void;
 }
 
-function DqTable({ title, count, rows, metricLabel, footer, toggle }: { title: string; count?: string; rows: DqTableRow[]; metricLabel: string; footer?: string; toggle?: TableToggle }) {
+const fmtN = (n: number) => n.toLocaleString('en-US');
+
+function DqTable({ title, count, rows, metricLabel, footer, toggle, onClear }: { title: string; count?: string; rows: DqTableRow[]; metricLabel: string; footer?: string; toggle?: TableToggle; onClear?: () => void }) {
   return (
     <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '6px 0 4px', marginTop: 16, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 22px 10px', flexWrap: 'wrap' }}>
@@ -145,6 +185,14 @@ function DqTable({ title, count, rows, metricLabel, footer, toggle }: { title: s
           {title}
           {count != null && <span style={{ color: '#C0453F' }}> ({count})</span>}
         </div>
+        {onClear && (
+          <button
+            onClick={onClear}
+            style={{ border: '1px solid #D5DEE6', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: '6px 13px', borderRadius: 8, color: '#5B7186', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <span style={{ fontSize: 13, lineHeight: 1 }}>×</span> Clear selection
+          </button>
+        )}
         {toggle && (
           <div style={{ display: 'inline-flex', background: '#fff', border: '1px solid #D5DEE6', borderRadius: 8, padding: 3, gap: 2 }}>
             {toggle.tabs.map((t) => {
@@ -247,7 +295,20 @@ function HeroCard({ bg, border, labelColor, value, valueColor, label, body }: { 
 export function DataQualityView({ d }: { d: Dashboard }) {
   const dq = d.dq;
   const [tableView, setTableView] = useState<TableViewId>('review');
+  const [sel, setSel] = useState<StackSel | null>(null);
   const [printing, setPrinting] = useState(false);
+
+  // Rows behind the chart segment the user clicked. Derived, so the table can
+  // never drift from the segment count it was opened from.
+  const selected = sel && (() => {
+    const key = STACK_KEYS.find((k) => k.key === sel.phase)!;
+    return {
+      practice: sel.practice,
+      phaseLabel: key.label.toLowerCase(),
+      metricLabel: sel.phase === 'review' ? 'Days waiting' : sel.phase === 'overdue' ? 'Days over' : 'Target date',
+      rows: dq.stackTable.filter((r) => r.practice === sel.practice && r.phase === sel.phase),
+    };
+  })();
 
   // When printing, render every subtab (below) then open the browser print
   // dialog; reset once the dialog closes so the screen view returns to normal.
@@ -266,7 +327,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
     <div className="dq-print">
       <style>{PRINT_CSS}</style>
       {!printing && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+        <div className="scr-only" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
           <button
             onClick={() => setPrinting(true)}
             style={{ border: '1px solid #0B6FA4', background: '#0B6FA4', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, padding: '8px 16px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 7 }}
@@ -404,26 +465,38 @@ export function DataQualityView({ d }: { d: Dashboard }) {
 
       </div>
 
-      {/* ===== Portfolio by practice, then the single record-level table ===== */}
+      {/* ===== ④ Summary of where requests sit ===== */}
       <div className="dq-page">
-      <Card style={{ marginTop: 34 }}>
+      <StageHeading n={4} title="Summary of where requests sit" bg="#2E7D5B" />
+      <Intro>
+        The whole portfolio in one view, each request counted once. Click any segment of a bar to list those
+        requests in the table below.
+      </Intro>
+
+      <Card>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div style={bigTitle}>Where every request sits, by practice</div>
           <StackLegend />
         </div>
         <div style={subLabel}>each request counted once: in review (Unassigned · 0%), started &amp; in delivery (25%+ on or before target), or overdue</div>
-        <PracticeStack rows={dq.practiceStack} />
+        <PracticeStack rows={dq.practiceStack} sel={sel} onPick={setSel} interactive={!printing} />
         <div style={note}>{dq.stackNote}</div>
       </Card>
 
-      {printing ? (
-        <>
-          {TABLE_VIEWS.map((v) => (
-            <DqTable key={v.id} title={v.title} count={v.count(dq)} rows={v.rows(dq)} metricLabel={v.metricLabel} footer={v.footer(dq)} />
-          ))}
-        </>
-      ) : (
-        (() => {
+      {/* The table is a screen-only drill-down; printing keeps the cards only. */}
+      <div className="dq-tablewrap">
+      {!printing && (selected
+        ? (
+          <DqTable
+            title={`${selected.practice} — ${selected.phaseLabel}`}
+            count={fmtN(selected.rows.length)}
+            rows={selected.rows}
+            metricLabel={selected.metricLabel}
+            footer="Filtered from the chart above. Clear the selection, or pick a tab, to go back to the full lists."
+            onClear={() => setSel(null)}
+          />
+        )
+        : (() => {
           const v = TABLE_VIEWS.find((t) => t.id === tableView) ?? TABLE_VIEWS[0];
           return (
             <DqTable
@@ -441,6 +514,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
           );
         })()
       )}
+      </div>
       <div style={note}>&nbsp;</div>
       </div>
     </div>

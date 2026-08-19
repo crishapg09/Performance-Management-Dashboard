@@ -479,6 +479,12 @@ export interface DqTableRow {
   stBg: string;
   stFg: string;
 }
+/** The three lifecycle phases used by the by-practice chart. */
+export type StackPhase = 'review' | 'delivery' | 'overdue';
+/** A table row tagged with the practice/phase cell of the chart it belongs to. */
+export interface StackTableRow extends DqTableRow {
+  phase: StackPhase;
+}
 export interface DataQuality {
   kpis: KPI[];
   // ① Received & in review (Unassigned · 0%)
@@ -488,6 +494,8 @@ export interface DataQuality {
   stalledCount: string;
   practiceStack: PracticeStackRow[];
   stackNote: string;
+  /** every charted request, tagged with its practice and phase, for drill-down */
+  stackTable: StackTableRow[];
   reviewTable: DqTableRow[];
   readyCount: string;
   readyOf: string;
@@ -587,15 +595,33 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   // mutually exclusive: a request past its target date counts as overdue, not
   // as delivery, so the bar totals the practice's real workload.
   const stackCounts = new Map<string, { review: number; delivery: number; overdue: number }>();
+  // Same pass builds the drill-down rows, so a segment in the chart and the rows
+  // it opens in the table can never disagree.
+  const stackTable: StackTableRow[] = [];
   for (const c of co) {
     if (c.status === 'Discontinued') continue;
     const k = c.practice || '—';
     const e = stackCounts.get(k) ?? { review: 0, delivery: 0, overdue: 0 };
-    if (c.status === 'Unassigned' || c.status === '0%') e.review++;
-    else if (c.status !== '100%' && c.xc != null && (c.xc as number) < today) e.overdue++;
-    else e.delivery++;
+    let phase: StackPhase;
+    if (c.status === 'Unassigned' || c.status === '0%') { e.review++; phase = 'review'; }
+    else if (c.status !== '100%' && c.xc != null && (c.xc as number) < today) { e.overdue++; phase = 'overdue'; }
+    else { e.delivery++; phase = 'delivery'; }
     stackCounts.set(k, e);
+    const cell =
+      phase === 'review' ? row(c, stallDays(c) + 'd', isStalled(c) ? '#C0453F' : '#7A8C9C')
+        : phase === 'overdue' ? row(c, '+' + Math.round(today - (c.xc as number)) + 'd', '#C0453F')
+        : row(c, formatDate(c.xc), '#43586B');
+    stackTable.push({ ...cell, phase });
   }
+  // Most-urgent first within each phase: longest waiting, furthest past target,
+  // and for in-delivery rows the earliest target date (soonest due).
+  const urgency = new Map(stackTable.map((r) => [r.id, 0]));
+  for (const c of co) {
+    if (!urgency.has(c.id)) continue;
+    urgency.set(c.id, c.status === 'Unassigned' || c.status === '0%' ? stallDays(c)
+      : c.xc == null ? -Infinity : today - (c.xc as number));
+  }
+  stackTable.sort((a, b) => (urgency.get(b.id) ?? 0) - (urgency.get(a.id) ?? 0));
   const stackRows = [...stackCounts.entries()]
     .map(([label, v]) => ({ label, ...v, n: v.review + v.delivery + v.overdue }))
     .sort((a, b) => b.n - a.n)
@@ -737,6 +763,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     stalledCount: fmtNum(stalledSetup.length),
     practiceStack,
     stackNote,
+    stackTable,
     reviewTable,
     readyCount: fmtNum(ready.length),
     readyOf: fmtNum(atZero.length),
