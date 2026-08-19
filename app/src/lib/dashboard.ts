@@ -492,7 +492,6 @@ export interface DataQuality {
   dupCount: string;
   /** descriptions that are placeholder text, on requests still in play */
   placeholderCount: string;
-  placeholderTable: DqTableRow[];
   // ③ Overdue, at-risk & closure
   overdueCount: string;
   overdueBuckets: BucketRow[];
@@ -680,9 +679,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   const placeholders = co
     .filter((c) => c.ph === 1 && c.status !== 'Discontinued')
     .sort((a, b) => phOrder.indexOf(b.status) - phOrder.indexOf(a.status));
-  const placeholderTable = placeholders
-    .slice(0, 12)
-    .map((c) => row(c, Math.round(today - (c.up ?? c.cr ?? c.op ?? today)) + 'd', '#C0453F'));
 
   // ---- ③ overdue, at-risk & closure ----
   const overdueSet = activeCO
@@ -745,7 +741,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     flagTable,
     dupCount: fmtNum(dupCount),
     placeholderCount: fmtNum(placeholders.length),
-    placeholderTable,
     overdueCount: fmtNum(overdueSet.length),
     overdueBuckets,
     atRiskCount: fmtNum(atRisk.length),

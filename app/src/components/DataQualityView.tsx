@@ -389,14 +389,6 @@ export function DataQualityView({ d }: { d: Dashboard }) {
 
       <DqTable title="Started records needing cleanup" count={dq.flagCount} rows={dq.flagTable} metricLabel="Missing / issue" />
 
-      <DqTable
-        title="Requests with a placeholder Details/Description"
-        count={dq.placeholderCount}
-        rows={dq.placeholderTable}
-        metricLabel="Not updated"
-        footer="Discontinued requests are excluded — these are all still live. Sorted by implementation status, so the ones furthest along appear first; the last column shows how long the record has gone without an update."
-      />
-
       </div>
       )}
 
