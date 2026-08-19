@@ -222,7 +222,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       <div style={{ background: '#EEF6FB', border: '1px solid #CFE6F2', borderRadius: 10, padding: '13px 18px', marginTop: 14, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#1CABE2', color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>i</div>
         <div style={{ fontSize: 12.5, color: '#2C5A75', lineHeight: 1.55 }}>
-          <strong>The right concern for the right stage.</strong> While a request is being set up (Unassigned → 0% → 25%) the record is still being built — missing objectives or a lead is normal, and the only real risk is <strong>stalling</strong>. Once work formally starts (50%+) the record should be <strong>complete and consistent</strong>, and its timeliness matters against the expected completion date.
+          <strong>The right concern for the right stage.</strong> While a request is being reviewed (Unassigned → 0%) the record is still being built — missing objectives or a lead is normal, and the only real risk is <strong>stalling</strong>. Once work formally starts (25%+) the record should be <strong>complete and consistent</strong>, and its timeliness matters against the expected completion date.
         </div>
       </div>
 
@@ -258,9 +258,9 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       {(tab === 'received' || printing) && (
       <div className="dq-page">
       {/* ===== ① Received & in review ===== */}
-      <StageHeading n={1} title="Received & in review — Unassigned · 0% · 25%" bg="#0B6FA4" />
+      <StageHeading n={1} title="Received & in review — Unassigned · 0%" bg="#0B6FA4" />
       <Intro>
-        <strong>{dq.setupTotal}</strong> requests are still being set up. Missing objectives or a lead here is expected — they're defined during scoping. The concern is requests that <strong>stall</strong> before delivery starts.
+        <strong>{dq.setupTotal}</strong> requests are still in review. Missing objectives or a lead here is expected — they're defined during scoping. The concern is requests that <strong>stall</strong> before delivery starts.
       </Intro>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16 }}>
@@ -271,7 +271,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </Card>
         <Card>
           <div style={bigTitle}>Time in setup</div>
-          <div style={subLabel}>Unassigned: days since received · 0%/25%: days since last update</div>
+          <div style={subLabel}>Unassigned: days since received · 0%: days since last update</div>
           <BucketBars rows={dq.setupAging} labelWidth={92} />
         </Card>
       </div>
@@ -280,7 +280,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         <div style={{ background: '#EDF7F1', border: '1px solid #CDE7D8', borderRadius: 10, padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div style={{ fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: '#2E7D5B', fontWeight: 700 }}>Ready to advance</div>
           <div style={{ fontSize: 40, fontWeight: 700, color: '#2E7D5B', lineHeight: 1, margin: '8px 0 6px', fontVariantNumeric: 'tabular-nums' }}>{dq.readyCount} <span style={{ fontSize: 16, color: '#7FA98F', fontWeight: 600 }}>/ {dq.readyOf}</span></div>
-          <div style={{ fontSize: 12.5, color: '#4B6B58', lineHeight: 1.5 }}>requests at 25% already have objectives, a lead and a target date — ready to move to 50%.</div>
+          <div style={{ fontSize: 12.5, color: '#4B6B58', lineHeight: 1.5 }}>requests at 0% already have objectives, a lead and a target date — ready to move to 25%.</div>
         </div>
         <Card>
           <div style={bigTitle}>Setup contradictions</div>
@@ -288,12 +288,6 @@ export function DataQualityView({ d }: { d: Dashboard }) {
           <CheckRows items={dq.setupContradictions} />
         </Card>
       </div>
-
-      <Card style={{ marginTop: 16 }}>
-        <div style={bigTitle}>Stalled in setup, by practice</div>
-        <div style={subLabel}>Unassigned &gt;14 days · 0%/25% not updated in 30+ days</div>
-        <div style={{ maxHeight: 220, overflowY: 'auto', paddingRight: 6 }}><MetricBars rows={dq.stalledByPractice} labelWidth={150} trackBg="#F5EEDF" /></div>
-      </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
         <Card>
@@ -316,25 +310,25 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       {(tab === 'delivery' || printing) && (
       <div className="dq-page">
       {/* ===== ② Started & in delivery ===== */}
-      <StageHeading n={2} title="Started & in delivery — 50% onwards" bg="#16385C" />
+      <StageHeading n={2} title="Started & in delivery — 25% onwards" bg="#16385C" />
       <Intro>
         <strong>{dq.deliveryTotal}</strong> requests have formally started. Their records should now be <strong>complete and consistent</strong> — the flags below are real problems to fix.
       </Intro>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16 }}>
         <Card>
-          <div style={bigTitle}>Field completeness (50%+)</div>
+          <div style={bigTitle}>Field completeness (25%+)</div>
           <div style={subLabel}>should all read close to 100% once work has started</div>
           <Completeness rows={dq.completeness} />
         </Card>
         <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, padding: '20px 22px', display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: '0 0 auto' }}>
-            <div style={{ fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7A8C9C', fontWeight: 700 }}>Record quality score (50%+)</div>
+            <div style={{ fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7A8C9C', fontWeight: 700 }}>Record quality score (25%+)</div>
             <div style={{ fontSize: 52, fontWeight: 700, color: dq.deliveryScoreColor, lineHeight: 1, margin: '10px 0 6px', fontVariantNumeric: 'tabular-nums' }}>{dq.deliveryScore}</div>
             <div style={{ fontSize: 12.5, color: '#7A8C9C' }}>{dq.deliveryScoreSub}</div>
           </div>
           <div style={{ flex: '1 1 180px', minWidth: 180, borderLeft: '3px solid #EEF2F6', paddingLeft: 18, fontSize: 12.5, color: '#5B7186', lineHeight: 1.55 }}>
-            <strong style={{ color: '#43586B' }}>What this means:</strong> of every request that has started delivery (50%+), this is the share whose record is fully in order — objectives, a lead, a target date and the other key fields all filled in and consistent. A record counts only if it passes <em>every</em> check, so {dq.deliveryScore} is a strict "clean record" rate, not an average.
+            <strong style={{ color: '#43586B' }}>What this means:</strong> of every request that has started delivery (25%+), this is the share whose record is fully in order — objectives, a lead, a target date and the other key fields all filled in and consistent. A record counts only if it passes <em>every</em> check, so {dq.deliveryScore} is a strict "clean record" rate, not an average.
           </div>
         </div>
       </div>
@@ -347,7 +341,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
         <Card>
-          <div style={bigTitle}>Flags & inconsistencies (50%+)</div>
+          <div style={bigTitle}>Flags & inconsistencies (25%+)</div>
           <div style={{ height: 6 }} />
           <CheckRows items={dq.deliveryFlags} />
         </Card>

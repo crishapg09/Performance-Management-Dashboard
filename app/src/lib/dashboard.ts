@@ -459,13 +459,11 @@ export interface DqTableRow {
 }
 export interface DataQuality {
   kpis: KPI[];
-  // ① Received & in review (Unassigned · 0% · 25%)
+  // ① Received & in review (Unassigned · 0%)
   setupTotal: string;
   setupFunnel: BucketRow[];
   setupAging: BucketRow[];
   stalledCount: string;
-  stalledByRegion: ColoredBarRow[];
-  stalledByPractice: ColoredBarRow[];
   unassignedByPractice: ColoredBarRow[];
   zeroByPractice: ColoredBarRow[];
   stalledTable: DqTableRow[];
@@ -473,7 +471,7 @@ export interface DataQuality {
   readyOf: string;
   setupContradictions: CheckItem[];
   stallNote: string;
-  // ② Started & in delivery (50%+)
+  // ② Started & in delivery (25%+)
   deliveryTotal: string;
   completeness: CompletenessRow[];
   deliveryScore: string;
@@ -502,8 +500,8 @@ export interface DataQuality {
 
 /**
  * Data quality read through the implementation-status lifecycle:
- *   Setup / in review  = Unassigned · 0% · 25%  → concern is stalling
- *   Delivery / started = 50% · 75% · 100%        → concern is completeness & consistency
+ *   Setup / in review  = Unassigned · 0%              → concern is stalling
+ *   Delivery / started = 25% · 50% · 75% · 100%  → concern is completeness & consistency
  * `co` is every Country Office request in the current filter (any status).
  */
 function computeDataQuality(co: TACase[], today: number): DataQuality {
@@ -526,10 +524,12 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   };
 
   // stage populations
-  const setupSet = co.filter((c) => ['Unassigned', '0%', '25%'].includes(c.status));
-  const started = co.filter((c) => c.status === '50%' || c.status === '75%');
+  // In review = Unassigned and 0% only. Once a request reaches 25% the scope is
+  // agreed and it counts as started, so completeness and flags apply from there.
+  const setupSet = co.filter((c) => ['Unassigned', '0%'].includes(c.status));
+  const started = co.filter((c) => ['25%', '50%', '75%'].includes(c.status));
   const completed = co.filter((c) => c.status === '100%');
-  const delivery = [...started, ...completed]; // 50%+ — completeness & flags apply here
+  const delivery = [...started, ...completed]; // 25%+ — completeness & flags apply here
   const activeCO = co.filter((c) => c.status !== '100%' && c.status !== 'Discontinued');
 
   // ---- ① setup / in review ----
@@ -539,8 +539,8 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   const stalledSetup = setupSet.filter(isStalled);
 
   const stageColor: Record<string, string> = { Unassigned: '#E0A21E', '0%': '#9CC6E0', '25%': '#5BA3D0' };
-  const funMax = Math.max(1, ...['Unassigned', '0%', '25%'].map((s) => setupSet.filter((c) => c.status === s).length));
-  const setupFunnel: BucketRow[] = ['Unassigned', '0%', '25%'].map((s) => {
+  const funMax = Math.max(1, ...['Unassigned', '0%'].map((s) => setupSet.filter((c) => c.status === s).length));
+  const setupFunnel: BucketRow[] = ['Unassigned', '0%'].map((s) => {
     const n = setupSet.filter((c) => c.status === s).length;
     return { label: s, n, color: stageColor[s], pct: Math.round((n / funMax) * 100) };
   });
@@ -556,9 +556,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     return { label, n, color, pct: Math.round((n / agMax) * 100) };
   });
 
-  const stalledByRegion = toBars(groupBy(stalledSetup, 'region'), '#E0A21E', 7);
-  const stalledByPractice = toBars(groupBy(stalledSetup.filter((c) => c.practice !== 'Other'), 'practice'), '#E0A21E', 15);
-
   // team performance: unassigned and 0% (awaiting the setup steps), by practice
   const unassignedByPractice = toBars(groupBy(setupSet.filter((c) => c.status === 'Unassigned' && c.practice !== 'Other'), 'practice'), '#E0A21E', 15);
   const zeroByPractice = toBars(groupBy(setupSet.filter((c) => c.status === '0%' && c.practice !== 'Other'), 'practice'), '#5BA3D0', 15);
@@ -567,12 +564,12 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     .slice(0, 12)
     .map((c) => row(c, stallDays(c) + 'd', '#C0453F'));
 
-  const at25 = setupSet.filter((c) => c.status === '25%');
-  const ready = at25.filter((c) => c.ho && c.lead && c.xc != null);
+  const atZero = setupSet.filter((c) => c.status === '0%');
+  const ready = atZero.filter((c) => c.ho && c.lead && c.xc != null);
 
-  const noLeadAssigned = setupSet.filter((c) => (c.status === '0%' || c.status === '25%') && !c.lead);
+  const noLeadAssigned = setupSet.filter((c) => c.status === '0%' && !c.lead);
   const setupContradictions: CheckItem[] = [
-    { n: fmtNum(noLeadAssigned.length), label: 'Past assignment, but no TA lead', sub: '0% or 25% means a lead should already be assigned', color: '#C0453F' },
+    { n: fmtNum(noLeadAssigned.length), label: 'Past assignment, but no TA lead', sub: '0% means a lead should already be assigned', color: '#C0453F' },
   ];
 
 
@@ -580,7 +577,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     'Days stalled = today (' + formatDate(today) + ') − last Updated date (for Unassigned, − the date received). ' +
     'Stage-transition dates are not captured yet, so this is a proxy for time in the current stage.';
 
-  // ---- ② started & in delivery (50%+) ----
+  // ---- ② started & in delivery (25%+) ----
   const delN = delivery.length;
   const cFields: [string, (c: TACase) => boolean][] = [
     ['Objectives', (c) => !!c.ho],
@@ -690,10 +687,10 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   const inSetupN = setupSet.filter((c) => c.status !== 'Unassigned').length;
   const kpis: KPI[] = [
     { label: 'Awaiting assignment', value: fmtNum(unassignedN), sub: 'unassigned CO requests', accent: '#E0A21E', color: '#0F2238' },
-    { label: 'In setup (0–25%)', value: fmtNum(inSetupN), sub: 'being scoped with the CO', accent: '#5BA3D0', color: '#0F2238' },
+    { label: 'In review (0%)', value: fmtNum(inSetupN), sub: 'being scoped with the CO', accent: '#5BA3D0', color: '#0F2238' },
     { label: 'Stalled in setup', value: fmtNum(stalledSetup.length), sub: 'stuck past the threshold', accent: '#C0453F', color: '#C0453F' },
-    { label: 'In delivery (50%+)', value: fmtNum(started.length), sub: 'work has started', accent: '#0B6FA4', color: '#0F2238' },
-    { label: 'Needing cleanup', value: fmtNum(flagRecords.length), sub: '50%+ with a data flag', accent: '#C0453F', color: '#C0453F' },
+    { label: 'In delivery (25%+)', value: fmtNum(started.length), sub: 'work has started', accent: '#0B6FA4', color: '#0F2238' },
+    { label: 'Needing cleanup', value: fmtNum(flagRecords.length), sub: '25%+ with a data flag', accent: '#C0453F', color: '#C0453F' },
     { label: 'Overdue', value: fmtNum(overdueSet.length), sub: 'active past target date', accent: '#C0453F', color: '#C0453F' },
   ];
 
@@ -703,13 +700,11 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     setupFunnel,
     setupAging,
     stalledCount: fmtNum(stalledSetup.length),
-    stalledByRegion,
-    stalledByPractice,
     unassignedByPractice,
     zeroByPractice,
     stalledTable,
     readyCount: fmtNum(ready.length),
-    readyOf: fmtNum(at25.length),
+    readyOf: fmtNum(atZero.length),
     setupContradictions,
     stallNote,
     deliveryTotal: fmtNum(delN),
