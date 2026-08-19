@@ -484,7 +484,6 @@ export interface DataQuality {
   deliveryScore: string;
   deliveryScoreColor: string;
   deliveryScoreSub: string;
-  qualityByPractice: QualityRegionRow[];
   deliveryFlags: CheckItem[];
   flagCount: string;
   flagTable: DqTableRow[];
@@ -633,16 +632,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   const passN = delivery.filter(passes).length;
   const score = pctStrict(passN, delN);
 
-  const qColor = (p: number) => (p >= 80 ? '#2E7D5B' : p >= 60 ? '#3E9CD6' : '#E0A21E');
-  const qualityByPractice: QualityRegionRow[] = groupBy(delivery.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice')
-    .slice(0, 15)
-    .map((r) => {
-      const cs = delivery.filter((c) => c.practice === r.label);
-      const p = pctStrict(cs.filter(passes).length, cs.length);
-      return { label: r.label, pct: p, pctLabel: p + '%', color: qColor(p) };
-    })
-    .sort((a, b) => b.pct - a.pct);
-
   const deliveryFlags: CheckItem[] = [
     { n: fmtNum(delivery.filter((c) => !c.lead).length), label: 'No TA lead', sub: 'in delivery yet unassigned', color: '#C0453F' },
     { n: fmtNum(delivery.filter((c) => c.xc == null).length), label: 'No expected completion date', sub: 'delivery of the TA cannot be planned or tracked', color: '#C0453F' },
@@ -733,7 +722,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     deliveryScore: score + '%',
     deliveryScoreColor: score >= 80 ? '#2E7D5B' : score >= 60 ? '#E0A21E' : '#C0453F',
     deliveryScoreSub: fmtNum(passN) + ' of ' + fmtNum(delN) + ' pass every check',
-    qualityByPractice,
     deliveryFlags,
     flagCount: fmtNum(flagRecords.length),
     flagTable,

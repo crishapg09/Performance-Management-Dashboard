@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Dashboard, CheckItem, CompletenessRow, QualityRegionRow, BucketRow, DqTableRow, ReviewPracticeRow } from '../lib/dashboard';
+import type { Dashboard, CheckItem, CompletenessRow, BucketRow, DqTableRow, ReviewPracticeRow } from '../lib/dashboard';
 import type { ColoredBarRow } from '../lib/aggregate';
 import { Card } from './Card';
 import { KpiStrip } from './KpiStrip';
@@ -71,20 +71,6 @@ function MetricBars({ rows, labelWidth, trackBg }: { rows: ColoredBarRow[]; labe
           <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.label}</div>
           <div style={{ height: 9, background: trackBg, borderRadius: 5 }}><div style={{ height: '100%', width: `${row.pct}%`, background: row.color, borderRadius: 5 }} /></div>
           <div style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.n}</div>
-        </div>
-      ))}
-    </>
-  );
-}
-
-function QualityBars({ rows, labelWidth }: { rows: QualityRegionRow[]; labelWidth: number }) {
-  return (
-    <>
-      {rows.map((row) => (
-        <div key={row.label} style={{ display: 'grid', gridTemplateColumns: `${labelWidth}px 1fr 48px`, alignItems: 'center', gap: 10, marginBottom: 11 }}>
-          <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600 }}>{row.label}</div>
-          <div style={{ height: 11, background: '#EEF2F6', borderRadius: 6 }}><div style={{ height: '100%', width: `${row.pct}%`, background: row.color, borderRadius: 6 }} /></div>
-          <div style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', color: row.color, fontVariantNumeric: 'tabular-nums' }}>{row.pctLabel}</div>
         </div>
       ))}
     </>
@@ -355,12 +341,6 @@ export function DataQualityView({ d }: { d: Dashboard }) {
           </div>
         </div>
       </div>
-
-      <Card style={{ marginTop: 16 }}>
-        <div style={bigTitle}>Quality score by practice</div>
-        <div style={subLabel}>% of started records that pass every check</div>
-        <QualityBars rows={dq.qualityByPractice} labelWidth={225} />
-      </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
         <Card>
