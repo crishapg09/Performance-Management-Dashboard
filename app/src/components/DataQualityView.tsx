@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Dashboard, CheckItem, CompletenessRow, QualityRegionRow, BucketRow, DqTableRow } from '../lib/dashboard';
+import type { Dashboard, CheckItem, CompletenessRow, QualityRegionRow, BucketRow, DqTableRow, ReviewPracticeRow } from '../lib/dashboard';
 import type { ColoredBarRow } from '../lib/aggregate';
 import { Card } from './Card';
 import { KpiStrip } from './KpiStrip';
@@ -102,6 +102,26 @@ function Completeness({ rows }: { rows: CompletenessRow[] }) {
         </div>
       ))}
     </>
+  );
+}
+
+function ReviewByPractice({ rows }: { rows: ReviewPracticeRow[] }) {
+  if (!rows.length) return <div style={{ fontSize: 12.5, color: '#9AA7B2' }}>None in the current filter.</div>;
+  return (
+    <div style={{ maxHeight: 300, overflowY: 'auto', paddingRight: 6 }}>
+      {rows.map((r) => (
+        <div key={r.label} style={{ display: 'grid', gridTemplateColumns: '190px 1fr 40px', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</div>
+          <div style={{ height: 11, background: '#EEF2F6', borderRadius: 6, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${r.barPct}%`, display: 'flex', borderRadius: 6, overflow: 'hidden' }}>
+              <div title={`${r.unassigned} unassigned`} style={{ width: `${(r.unassigned / r.n) * 100}%`, background: '#E0A21E' }} />
+              <div title={`${r.zero} at 0%`} style={{ width: `${(r.zero / r.n) * 100}%`, background: '#5BA3D0' }} />
+            </div>
+          </div>
+          <div title={`${r.unassigned} unassigned · ${r.zero} at 0%`} style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.n}</div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -289,18 +309,21 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </Card>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
-        <Card>
-          <div style={bigTitle}>Unassigned, by practice</div>
-          <div style={subLabel}>requests received but not yet picked up by a team</div>
-          <div style={{ maxHeight: 200, overflowY: 'auto', paddingRight: 6 }}><MetricBars rows={dq.unassignedByPractice} labelWidth={150} trackBg="#F5EEDF" /></div>
-        </Card>
-        <Card>
-          <div style={bigTitle}>At 0%, by practice</div>
-          <div style={subLabel}>assigned to a team but delivery not yet started</div>
-          <div style={{ maxHeight: 200, overflowY: 'auto', paddingRight: 6 }}><MetricBars rows={dq.zeroByPractice} labelWidth={150} trackBg="#E4EEF5" /></div>
-        </Card>
-      </div>
+      <Card style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={bigTitle}>In review, by practice</div>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#43586B' }}>
+              <span style={{ width: 11, height: 11, borderRadius: 3, background: '#E0A21E' }} /> Unassigned
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#43586B' }}>
+              <span style={{ width: 11, height: 11, borderRadius: 3, background: '#5BA3D0' }} /> At 0%
+            </span>
+          </div>
+        </div>
+        <div style={subLabel}>not yet picked up by a team, or assigned but not started</div>
+        <ReviewByPractice rows={dq.reviewByPractice} />
+      </Card>
 
       <DqTable title="Most stalled setup requests" count={dq.stalledCount} rows={dq.stalledTable} metricLabel="Days stalled" footer={dq.stallNote} />
 

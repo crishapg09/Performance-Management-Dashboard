@@ -74,6 +74,14 @@ export interface MetricSquare {
   byPractice: ColoredBarRow[];
 }
 export interface LegendItem { label: string; color: string; }
+/** One practice in the review pipeline, split into its Unassigned and 0% parts. */
+export interface ReviewPracticeRow {
+  label: string;
+  n: number;
+  barPct: number;
+  unassigned: number;
+  zero: number;
+}
 export interface OverdueTableRow {
   id: string; country: string; full: string; practice: string; expDate: string; status: string;
   lead: string; leadColor: string; state: string; stateBg: string; stateFg: string; days: string; stBg: string; stFg: string;
@@ -464,8 +472,7 @@ export interface DataQuality {
   setupFunnel: BucketRow[];
   setupAging: BucketRow[];
   stalledCount: string;
-  unassignedByPractice: ColoredBarRow[];
-  zeroByPractice: ColoredBarRow[];
+  reviewByPractice: ReviewPracticeRow[];
   stalledTable: DqTableRow[];
   readyCount: string;
   readyOf: string;
@@ -556,9 +563,26 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     return { label, n, color, pct: Math.round((n / agMax) * 100) };
   });
 
-  // team performance: unassigned and 0% (awaiting the setup steps), by practice
-  const unassignedByPractice = toBars(groupBy(setupSet.filter((c) => c.status === 'Unassigned' && c.practice !== 'Other'), 'practice'), '#E0A21E', 15);
-  const zeroByPractice = toBars(groupBy(setupSet.filter((c) => c.status === '0%' && c.practice !== 'Other'), 'practice'), '#5BA3D0', 15);
+  // Team performance: one row per practice, stacked into its Unassigned and 0%
+  // parts, so volume and composition read together.
+  const reviewCounts = new Map<string, { unassigned: number; zero: number }>();
+  for (const c of setupSet) {
+    if (HIDDEN_PRACTICES.has(c.practice)) continue;
+    const k = c.practice || '—';
+    const e = reviewCounts.get(k) ?? { unassigned: 0, zero: 0 };
+    if (c.status === 'Unassigned') e.unassigned++;
+    else e.zero++;
+    reviewCounts.set(k, e);
+  }
+  const reviewRows = [...reviewCounts.entries()]
+    .map(([label, v]) => ({ label, ...v, n: v.unassigned + v.zero }))
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 15);
+  const reviewMax = Math.max(1, ...reviewRows.map((r) => r.n));
+  const reviewByPractice: ReviewPracticeRow[] = reviewRows.map((r) => ({
+    ...r,
+    barPct: Math.round((r.n / reviewMax) * 100),
+  }));
   const stalledTable = [...stalledSetup]
     .sort((a, b) => stallDays(b) - stallDays(a))
     .slice(0, 12)
@@ -700,8 +724,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     setupFunnel,
     setupAging,
     stalledCount: fmtNum(stalledSetup.length),
-    unassignedByPractice,
-    zeroByPractice,
+    reviewByPractice,
     stalledTable,
     readyCount: fmtNum(ready.length),
     readyOf: fmtNum(atZero.length),
