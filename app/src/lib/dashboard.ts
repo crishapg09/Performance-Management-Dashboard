@@ -504,6 +504,16 @@ export interface DataQuality {
 }
 
 /**
+ * Percentage for completeness/quality bars. Never rounds up to 100: a value is
+ * only 100% when nothing is missing, so a single unfilled record still shows.
+ */
+function pctStrict(part: number, whole: number): number {
+  if (!whole) return 0;
+  if (part >= whole) return 100;
+  return Math.min(99, Math.round((part / whole) * 100));
+}
+
+/**
  * Data quality read through the implementation-status lifecycle:
  *   Setup / in review  = Unassigned · 0%              → concern is stalling
  *   Delivery / started = 25% · 50% · 75% · 100%  → concern is completeness & consistency
@@ -612,7 +622,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     ['Programme offer', (c) => !!c.offer],
   ];
   const completeness: CompletenessRow[] = cFields.map(([label, fn]) => {
-    const p = delN ? Math.round((delivery.filter(fn).length / delN) * 100) : 0;
+    const p = pctStrict(delivery.filter(fn).length, delN);
     const color = p >= 95 ? '#2E7D5B' : p >= 80 ? '#3E9CD6' : '#E0A21E';
     return { label, pct: p, pctLabel: p + '%', color };
   });
@@ -621,14 +631,14 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     !!(c.lead && c.xc != null && c.hd && c.modality && c.offer) &&
     !(c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number));
   const passN = delivery.filter(passes).length;
-  const score = delN ? Math.round((passN / delN) * 100) : 0;
+  const score = pctStrict(passN, delN);
 
   const qColor = (p: number) => (p >= 80 ? '#2E7D5B' : p >= 60 ? '#3E9CD6' : '#E0A21E');
   const qualityByPractice: QualityRegionRow[] = groupBy(delivery.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice')
     .slice(0, 15)
     .map((r) => {
       const cs = delivery.filter((c) => c.practice === r.label);
-      const p = Math.round((cs.filter(passes).length / cs.length) * 100);
+      const p = pctStrict(cs.filter(passes).length, cs.length);
       return { label: r.label, pct: p, pctLabel: p + '%', color: qColor(p) };
     })
     .sort((a, b) => b.pct - a.pct);
