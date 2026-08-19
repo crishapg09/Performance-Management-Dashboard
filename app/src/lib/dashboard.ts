@@ -589,7 +589,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     .map((c) => row(c, stallDays(c) + 'd', isStalled(c) ? '#C0453F' : '#7A8C9C'));
 
   const atZero = setupSet.filter((c) => c.status === '0%');
-  const ready = atZero.filter((c) => c.ho && c.lead && c.xc != null);
+  const ready = atZero.filter((c) => c.hd && c.lead && c.xc != null);
 
   const noLeadAssigned = setupSet.filter((c) => c.status === '0%' && !c.lead);
   const setupContradictions: CheckItem[] = [
@@ -606,7 +606,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   // ---- ② started & in delivery (25%+) ----
   const delN = delivery.length;
   const cFields: [string, (c: TACase) => boolean][] = [
-    ['Objectives', (c) => !!c.ho],
     ['TA lead', (c) => !!c.lead],
     ['Expected completion', (c) => c.xc != null],
     ['Details/Description', (c) => !!c.hd],
@@ -620,7 +619,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   });
 
   const passes = (c: TACase) =>
-    !!(c.ho && c.lead && c.xc != null && c.hd && c.modality && c.offer) &&
+    !!(c.lead && c.xc != null && c.hd && c.modality && c.offer) &&
     !(c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number));
   const passN = delivery.filter(passes).length;
   const score = delN ? Math.round((passN / delN) * 100) : 0;
@@ -643,15 +642,13 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     .sort((a, b) => a.pct - b.pct);
 
   const deliveryFlags: CheckItem[] = [
-    { n: fmtNum(delivery.filter((c) => !c.ho).length), label: 'Missing objectives', sub: 'work has started but objectives were never captured', color: '#C0453F' },
     { n: fmtNum(delivery.filter((c) => !c.lead).length), label: 'No TA lead', sub: 'in delivery yet unassigned', color: '#C0453F' },
     { n: fmtNum(delivery.filter((c) => c.xc == null).length), label: 'No expected completion date', sub: 'timeliness can never be measured', color: '#C0453F' },
     { n: fmtNum(delivery.filter((c) => c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number)).length), label: 'Completion target before start', sub: 'expected completion earlier than expected start', color: '#E0A21E' },
   ];
 
   const reason = (c: TACase): string =>
-    !c.ho ? 'no objectives'
-      : !c.lead ? 'no TA lead'
+    !c.lead ? 'no TA lead'
       : c.xc == null ? 'no target date'
       : !c.hd ? 'no details/description'
       : !c.modality ? 'no modality'

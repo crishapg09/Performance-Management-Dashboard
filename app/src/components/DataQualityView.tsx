@@ -242,7 +242,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       <div style={{ background: '#EEF6FB', border: '1px solid #CFE6F2', borderRadius: 10, padding: '13px 18px', marginTop: 14, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#1CABE2', color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>i</div>
         <div style={{ fontSize: 12.5, color: '#2C5A75', lineHeight: 1.55 }}>
-          <strong>The right concern for the right stage.</strong> While a request is being reviewed (Unassigned → 0%) the record is still being built — missing objectives or a lead is normal, and the only real risk is <strong>stalling</strong>. Once work formally starts (25%+) the record should be <strong>complete and consistent</strong>, and its timeliness matters against the expected completion date.
+          <strong>The right concern for the right stage.</strong> While a request is being reviewed (Unassigned → 0%) the record is still being built — missing details or a lead is normal, and the only real risk is <strong>stalling</strong>. Once work formally starts (25%+) the record should be <strong>complete and consistent</strong>, and its timeliness matters against the expected completion date.
         </div>
       </div>
 
@@ -280,7 +280,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       {/* ===== ① Received & in review ===== */}
       <StageHeading n={1} title="Received & in review — Unassigned · 0%" bg="#0B6FA4" />
       <Intro>
-        <strong>{dq.setupTotal}</strong> requests are still in review. Missing objectives or a lead here is expected — they're defined during scoping. The concern is requests that <strong>stall</strong> before delivery starts.
+        <strong>{dq.setupTotal}</strong> requests are still in review. A thin description or missing lead here is expected — they're firmed up during scoping. The concern is requests that <strong>stall</strong> before delivery starts.
       </Intro>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16 }}>
@@ -300,7 +300,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         <div style={{ background: '#EDF7F1', border: '1px solid #CDE7D8', borderRadius: 10, padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div style={{ fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: '#2E7D5B', fontWeight: 700 }}>Ready to advance</div>
           <div style={{ fontSize: 40, fontWeight: 700, color: '#2E7D5B', lineHeight: 1, margin: '8px 0 6px', fontVariantNumeric: 'tabular-nums' }}>{dq.readyCount} <span style={{ fontSize: 16, color: '#7FA98F', fontWeight: 600 }}>/ {dq.readyOf}</span></div>
-          <div style={{ fontSize: 12.5, color: '#4B6B58', lineHeight: 1.5 }}>requests at 0% already have objectives, a lead and a target date — ready to move to 25%.</div>
+          <div style={{ fontSize: 12.5, color: '#4B6B58', lineHeight: 1.5 }}>requests at 0% already have a description, a lead and a target date — ready to move to 25%.</div>
         </div>
         <Card>
           <div style={bigTitle}>Setup contradictions</div>
@@ -351,7 +351,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
             <div style={{ fontSize: 12.5, color: '#7A8C9C' }}>{dq.deliveryScoreSub}</div>
           </div>
           <div style={{ flex: '1 1 180px', minWidth: 180, borderLeft: '3px solid #EEF2F6', paddingLeft: 18, fontSize: 12.5, color: '#5B7186', lineHeight: 1.55 }}>
-            <strong style={{ color: '#43586B' }}>What this means:</strong> of every request that has started delivery (25%+), this is the share whose record is fully in order — objectives, a lead, a target date and the other key fields all filled in and consistent. A record counts only if it passes <em>every</em> check, so {dq.deliveryScore} is a strict "clean record" rate, not an average.
+            <strong style={{ color: '#43586B' }}>What this means:</strong> of every request that has started delivery (25%+), this is the share whose record is fully in order — a lead, a target date, a real description and the other key fields all filled in and consistent. A record counts only if it passes <em>every</em> check, so {dq.deliveryScore} is a strict "clean record" rate, not an average.
           </div>
         </div>
       </div>
