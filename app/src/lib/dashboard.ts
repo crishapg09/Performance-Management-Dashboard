@@ -645,7 +645,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
 
   const deliveryFlags: CheckItem[] = [
     { n: fmtNum(delivery.filter((c) => !c.lead).length), label: 'No TA lead', sub: 'in delivery yet unassigned', color: '#C0453F' },
-    { n: fmtNum(delivery.filter((c) => c.xc == null).length), label: 'No expected completion date', sub: 'timeliness can never be measured', color: '#C0453F' },
+    { n: fmtNum(delivery.filter((c) => c.xc == null).length), label: 'No expected completion date', sub: 'delivery of the TA cannot be planned or tracked', color: '#C0453F' },
     { n: fmtNum(delivery.filter((c) => c.xc != null && c.xs != null && (c.xc as number) < (c.xs as number)).length), label: 'Completion target before start', sub: 'expected completion earlier than expected start', color: '#E0A21E' },
   ];
 
