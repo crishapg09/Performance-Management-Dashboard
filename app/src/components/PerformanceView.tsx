@@ -5,13 +5,6 @@ import { SectionHeading } from './SectionHeading';
 import { KpiStrip } from './KpiStrip';
 import { BarList } from './BarList';
 
-const SUBTABS = [
-  { id: 'demand', label: 'Demand & delivery' },
-  { id: 'cycle', label: 'Cycle time' },
-  { id: 'workload', label: 'Workload' },
-] as const;
-type SubTab = (typeof SUBTABS)[number]['id'];
-
 const fmtInt = (n: number) => n.toLocaleString('en-US');
 const bigCardTitle: React.CSSProperties = { fontSize: 13.5, fontWeight: 700 };
 const whatSays: React.CSSProperties = {
@@ -311,41 +304,11 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
 }
 
 export function PerformanceView({ d }: { d: Dashboard }) {
-  const [tab, setTab] = useState<SubTab>('demand');
   const [reqTab, setReqTab] = useState<'new' | 'overdue'>('new');
   return (
     <>
       <KpiStrip kpis={d.kpis} />
 
-      {/* Sub-tab bar */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #DCE3EA', margin: '26px 0 6px', flexWrap: 'wrap' }}>
-        {SUBTABS.map((t) => {
-          const on = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: 16.5,
-                fontWeight: 700,
-                padding: '12px 20px',
-                color: on ? '#0B5A8A' : '#5B7186',
-                borderBottom: on ? '3px solid #0B5A8A' : '3px solid transparent',
-                marginBottom: -1,
-              }}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {tab === 'demand' && (
-      <>
       {/* ===== SECTION 1: DEMAND & STATUS ===== */}
       <SectionHeading n={1} title="Demand, delivery & status" />
 
@@ -409,44 +372,8 @@ export function PerformanceView({ d }: { d: Dashboard }) {
         </div>
       </Card>
 
-      {/* newest / overdue requests table */}
-      <RequestTable
-        title={reqTab === 'new' ? 'Newest requests (last 30 days)' : 'Most overdue active requests'}
-        rows={reqTab === 'new' ? d.newTable : d.overdueTableFinal}
-        metricLabel={reqTab === 'new' ? 'Age (days)' : 'Days over'}
-        daysColor={reqTab === 'new' ? '#0B6FA4' : '#C0453F'}
-        footer={reqTab === 'new' ? undefined : 'Days over = today \u2212 the request\u2019s Expected Completion Date, counting only active requests (implementation status below 100%) whose target date has already passed.'}
-        toggle={{
-          tabs: [{ id: 'new', label: 'New requests' }, { id: 'overdue', label: 'Overdue requests' }],
-          active: reqTab,
-          onChange: (id) => setReqTab(id as 'new' | 'overdue'),
-        }}
-      />
-
-      </>
-      )}
-
-      {tab === 'cycle' && (
-      <>
-      {/* ===== SECTION 2: CYCLE TIME ===== */}
-      <SectionHeading n={2} title="Cycle time: opening, response time and closure" />
-      <KpiStrip kpis={d.mgmtKpis} />
-
-      <Card style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={bigCardTitle}>Average response time after assignment, by practice</div>
-          <div style={{ fontSize: 11.5, color: '#9AA7B2' }}>coming soon</div>
-        </div>
-        <div style={{ fontSize: 12.5, color: '#9AA7B2' }}>This measure requires an assignment date, which is not yet captured at source. Space reserved here for when that data becomes available.</div>
-      </Card>
-
-      </>
-      )}
-
-      {tab === 'workload' && (
-      <>
       {/* ===== SECTION 4: WORKLOAD ===== */}
-      <SectionHeading n={4} title="Workload: practices, regions & staff" bg="#16385C" />
+      <SectionHeading n={2} title="Workload: practices, regions & staff" bg="#16385C" />
       <SolidWorkloadCard title="Requests by practice" rows={d.byPractice} labelW={225} />
 
       {/* workload spread */}
@@ -523,8 +450,20 @@ export function PerformanceView({ d }: { d: Dashboard }) {
           ))}
         </div>
       </Card>
-      </>
-      )}
+
+      {/* newest / overdue requests table */}
+      <RequestTable
+        title={reqTab === 'new' ? 'Newest requests (last 30 days)' : 'Most overdue active requests'}
+        rows={reqTab === 'new' ? d.newTable : d.overdueTableFinal}
+        metricLabel={reqTab === 'new' ? 'Age (days)' : 'Days over'}
+        daysColor={reqTab === 'new' ? '#0B6FA4' : '#C0453F'}
+        footer={reqTab === 'new' ? undefined : 'Days over = today \u2212 the request\u2019s Expected Completion Date, counting only active requests (implementation status below 100%) whose target date has already passed.'}
+        toggle={{
+          tabs: [{ id: 'new', label: 'New requests' }, { id: 'overdue', label: 'Overdue requests' }],
+          active: reqTab,
+          onChange: (id) => setReqTab(id as 'new' | 'overdue'),
+        }}
+      />
     </>
   );
 }

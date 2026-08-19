@@ -119,8 +119,6 @@ export interface Dashboard {
   metricSquares: MetricSquare[];
   newTable: OverdueTableRow[];
 
-  mgmtKpis: KPI[];
-
   overdueBuckets: BucketRow[];
   /** plain-language reading of the severity split, kept accurate on refresh */
   overdueSeverityNote: string;
@@ -310,33 +308,18 @@ export function computeDashboard(
     'Anything beyond 60 days needs the expected completion date reviewed: the original target is no longer ' +
     'credible, so the request should be re-planned, or closed if the work is finished.';
 
-  // stalled at 0% > 30 days
-  const stalled = activeSet.filter((c) => c.status === '0%' && c.op != null && TODAY - (c.op as number) > 30);
-  const closed30 = F.filter((c) => c.cl != null && (c.cl as number) >= TODAY - 30 && (c.cl as number) <= TODAY).length;
-
-  // full-export match for discontinued + data quality
-  // Full export in the current filter — used only to source the discontinued
-  // rate and the "no country office assigned" (blank) count.
+  // Full export in the current filter — feeds the Data Quality view and the
+  // "no country office assigned" (blank) count in the header.
   const FQ = rawCases.filter((c) => matchesFilters(c, state));
   const REAL_REGIONS = new Set(['ESAR', 'APR', 'WCAR', 'LACR', 'ECAR', 'MENAR']);
-  // All Country Office requests (any status) — basis for the discontinued rate.
+  // All Country Office requests (any status) — the Data Quality universe.
   const FCO = FQ.filter((c) => REAL_REGIONS.has(c.region));
-  const disc = FCO.filter((c) => c.status === 'Discontinued').length;
-  const discRate = FCO.length ? (disc / FCO.length) * 100 : 0;
 
   // Data Quality corner note: active CO requests (= the Performance universe)
   // vs. requests with no country office assigned (blank).
   const coFromN = F.length;
   const coUnassignedN = FQ.filter((c) => !c.office).length;
 
-  const mgmtKpis: KPI[] = [
-    { label: 'Open → assignment', value: 'N/A', sub: 'measure coming soon', accent: '#9AA7B2', color: '#9AA7B2' },
-    { label: 'Assignment → first response', value: 'N/A', sub: 'measure coming soon', accent: '#9AA7B2', color: '#9AA7B2' },
-    { label: 'Opened last 30 days', value: fmtNum(recentSet.length), sub: 'new requests received', accent: '#0B6FA4', color: '#0F2238' },
-    { label: 'Closed last 30 days', value: fmtNum(closed30), sub: 'vs ' + fmtNum(recentSet.length) + ' received — throughput', accent: '#2E7D5B', color: '#0F2238' },
-    { label: 'Stalled at 0%', value: fmtNum(stalled.length), sub: 'open >30 days, no progress', accent: '#E0A21E', color: '#E0A21E' },
-    { label: 'Discontinued', value: fmtNum(disc), sub: discRate.toFixed(1) + '% requests dropped', accent: '#9AA7B2', color: '#5B7186' },
-  ];
 
   // Metric squares for Demand & delivery: each is sized so its AREA is
   // proportional to the number of TAs, and carries its own by-practice split
@@ -436,7 +419,6 @@ export function computeDashboard(
     onTrackByPractice: toBars(groupBy(onTrackSet.filter((c) => c.practice !== 'Other'), 'practice'), '#3E9CD6', 15),
     newTable,
 
-    mgmtKpis,
 
     overdueBuckets,
     overdueSeverityNote,
