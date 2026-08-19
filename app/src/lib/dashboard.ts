@@ -421,10 +421,10 @@ export function computeDashboard(
     ioOpenedTotal,
     ioCompletedTotal,
     recent: recentSet.length,
-    recentByPractice: toBars(groupBy(recentSet.filter((c) => c.practice !== 'Other'), 'practice'), '#0B6FA4', 15),
+    recentByPractice: toBars(groupBy(recentSet.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice'), '#0B6FA4', 15),
     metricSquares,
     onTrack,
-    onTrackByPractice: toBars(groupBy(onTrackSet.filter((c) => c.practice !== 'Other'), 'practice'), '#3E9CD6', 15),
+    onTrackByPractice: toBars(groupBy(onTrackSet.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice'), '#3E9CD6', 15),
     newTable,
 
 
@@ -484,7 +484,6 @@ export interface DataQuality {
   deliveryScore: string;
   deliveryScoreColor: string;
   deliveryScoreSub: string;
-  qualityByRegion: QualityRegionRow[];
   qualityByPractice: QualityRegionRow[];
   deliveryFlags: CheckItem[];
   flagCount: string;
@@ -625,21 +624,14 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   const score = delN ? Math.round((passN / delN) * 100) : 0;
 
   const qColor = (p: number) => (p >= 80 ? '#2E7D5B' : p >= 60 ? '#3E9CD6' : '#E0A21E');
-  const qualityByRegion: QualityRegionRow[] = groupBy(delivery, 'region')
-    .map((r) => {
-      const cs = delivery.filter((c) => c.region === r.label);
-      const p = Math.round((cs.filter(passes).length / cs.length) * 100);
-      return { label: r.label, pct: p, pctLabel: p + '%', color: qColor(p) };
-    })
-    .sort((a, b) => a.pct - b.pct);
-  const qualityByPractice: QualityRegionRow[] = groupBy(delivery.filter((c) => c.practice !== 'Other'), 'practice')
+  const qualityByPractice: QualityRegionRow[] = groupBy(delivery.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice')
     .slice(0, 15)
     .map((r) => {
       const cs = delivery.filter((c) => c.practice === r.label);
       const p = Math.round((cs.filter(passes).length / cs.length) * 100);
       return { label: r.label, pct: p, pctLabel: p + '%', color: qColor(p) };
     })
-    .sort((a, b) => a.pct - b.pct);
+    .sort((a, b) => b.pct - a.pct);
 
   const deliveryFlags: CheckItem[] = [
     { n: fmtNum(delivery.filter((c) => !c.lead).length), label: 'No TA lead', sub: 'in delivery yet unassigned', color: '#C0453F' },
@@ -692,7 +684,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   ].map((b) => ({ ...b, pct: Math.round((b.n / obMax) * 100) }));
   const atRisk = activeCO.filter((c) => c.xc != null && (c.xc as number) >= today && (c.xc as number) <= today + 30);
   const overdueByRegion = toBars(groupBy(overdueSet, 'region'), '#C0453F', 7);
-  const overdueByPractice = toBars(groupBy(overdueSet.filter((c) => c.practice !== 'Other'), 'practice'), '#C0453F', 15);
+  const overdueByPractice = toBars(groupBy(overdueSet.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice'), '#C0453F', 15);
   const overdueTable = overdueSet.slice(0, 12).map((c) => row(c, '+' + Math.round(today - (c.xc as number)) + 'd', '#C0453F'));
 
   const notClosed = co.filter((c) => (c.status === '100%' || c.status === 'Discontinued') && !c.cl);
@@ -731,7 +723,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     deliveryScore: score + '%',
     deliveryScoreColor: score >= 80 ? '#2E7D5B' : score >= 60 ? '#E0A21E' : '#C0453F',
     deliveryScoreSub: fmtNum(passN) + ' of ' + fmtNum(delN) + ' pass every check',
-    qualityByRegion,
     qualityByPractice,
     deliveryFlags,
     flagCount: fmtNum(flagRecords.length),

@@ -82,7 +82,7 @@ function QualityBars({ rows, labelWidth }: { rows: QualityRegionRow[]; labelWidt
     <>
       {rows.map((row) => (
         <div key={row.label} style={{ display: 'grid', gridTemplateColumns: `${labelWidth}px 1fr 48px`, alignItems: 'center', gap: 10, marginBottom: 11 }}>
-          <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.label}</div>
+          <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600 }}>{row.label}</div>
           <div style={{ height: 11, background: '#EEF2F6', borderRadius: 6 }}><div style={{ height: '100%', width: `${row.pct}%`, background: row.color, borderRadius: 6 }} /></div>
           <div style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', color: row.color, fontVariantNumeric: 'tabular-nums' }}>{row.pctLabel}</div>
         </div>
@@ -359,7 +359,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       <Card style={{ marginTop: 16 }}>
         <div style={bigTitle}>Quality score by practice</div>
         <div style={subLabel}>% of started records that pass every check</div>
-        <div style={{ maxHeight: 230, overflowY: 'auto', paddingRight: 6 }}><QualityBars rows={dq.qualityByPractice} labelWidth={150} /></div>
+        <QualityBars rows={dq.qualityByPractice} labelWidth={225} />
       </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
