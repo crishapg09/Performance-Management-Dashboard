@@ -413,6 +413,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </div>
         <div style={subLabel}>each request counted once: in review (Unassigned · 0%), started &amp; in delivery (25%+ on or before target), or overdue</div>
         <PracticeStack rows={dq.practiceStack} />
+        <div style={note}>{dq.stackNote}</div>
       </Card>
 
       {printing ? (

@@ -198,7 +198,7 @@ function SeverityLegend({ items }: { items: { label: string; color: string }[] }
  * Metric squares sized by volume (area ∝ number of TAs). Selecting one filters
  * the practice breakdown underneath to that metric.
  */
-function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
+function MetricExplorer({ squares, coverageNote }: { squares: MetricSquare[]; coverageNote: string }) {
   const [sel, setSel] = useState(squares[0]?.id ?? '');
   const active = squares.find((s) => s.id === sel) ?? squares[0];
   if (!active) return null;
@@ -272,7 +272,7 @@ function MetricExplorer({ squares }: { squares: MetricSquare[] }) {
             lineHeight: 1.55,
           }}
         >
-          <strong style={{ color: '#43586B' }}>On track, Overdue and Completed</strong> cover the whole portfolio.{' '}
+          {coverageNote}{' '}
           <strong style={{ color: '#43586B' }}>Received in the last 30 days</strong> is a subset, to show inflow of
           requests.
         </div>
@@ -349,7 +349,7 @@ export function PerformanceView({ d }: { d: Dashboard }) {
       </Card>
 
       {/* metric squares — click to re-break the practice chart */}
-      <MetricExplorer squares={d.metricSquares} />
+      <MetricExplorer squares={d.metricSquares} coverageNote={d.squareCoverageNote} />
 
       {/* severity of the overdue tail */}
       <Card style={{ marginTop: 16 }}>

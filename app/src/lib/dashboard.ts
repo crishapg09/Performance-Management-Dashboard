@@ -126,6 +126,8 @@ export interface Dashboard {
   onTrackByPractice: ColoredBarRow[];
   /** Demand & delivery: click a square to re-break the practice chart. */
   metricSquares: MetricSquare[];
+  /** what the three portfolio squares do and don't cover, kept accurate on refresh */
+  squareCoverageNote: string;
   newTable: OverdueTableRow[];
 
   overdueBuckets: BucketRow[];
@@ -150,10 +152,6 @@ export interface Dashboard {
   dq: DataQuality;
 }
 
-/** Practices kept out of the breakdown charts. */
-const HIDDEN_PRACTICES = new Set(['Other', 'Innovation']);
-const notOther = (key: keyof TACase, c: TACase) => !(key === 'practice' && HIDDEN_PRACTICES.has(c.practice));
-
 export function computeDashboard(
   cases: TACase[],
   rawCases: TACase[],
@@ -166,12 +164,16 @@ export function computeDashboard(
   const total = F.length;
   const ALL = cases.length;
 
+  // "Active" excludes Unassigned: an unassigned request is still in review, not
+  // in delivery. Overdue is deliberately NOT a subset of active — an unassigned
+  // request already past its target date is the worst kind of overdue, so it is
+  // counted here (and matches the Data Quality view's overdue figure).
   const activeSet = F.filter((c) => !['100%', 'Discontinued', 'Unassigned'].includes(c.status));
-  const overdueSet = activeSet
+  const overdueSet = F.filter((c) => !['100%', 'Discontinued'].includes(c.status))
     .filter((c) => c.xc != null && c.xc < TODAY)
     .sort((a, b) => TODAY - (b.xc as number) - (TODAY - (a.xc as number)));
-  const onTrack = activeSet.length - overdueSet.length;
   const onTrackSet = activeSet.filter((c) => !(c.xc != null && c.xc < TODAY));
+  const onTrack = onTrackSet.length;
   const recentSet = F.filter((c) => {
     const t = c.cr ?? c.op;
     return t != null && t >= TODAY - 30 && t <= TODAY;
@@ -256,7 +258,7 @@ export function computeDashboard(
 
   // requests-by (stacked; rendered as solid bar + TAs/Leads), excluding practice "Other"
   const stackByStatus = (key: keyof TACase, limit: number): StackedRow[] => {
-    const groups = groupBy(F.filter((c) => notOther(key, c)), key);
+    const groups = groupBy(F, key);
     const max = Math.max(1, ...groups.map((r) => r.n));
     return groups.slice(0, limit).map((r) => {
       const rowCases = F.filter((c) => (((c[key] as string) || '—') === r.label));
@@ -312,7 +314,7 @@ export function computeDashboard(
   // refresh can't leave a stale claim like "most are less than 30 days late".
   const biggestBucket = overdueBuckets.reduce((a, b) => (b.n > a.n ? b : a), overdueBuckets[0]);
   const overdueSeverityNote =
-    fmtNum(overdueSet.length) + ' active requests are past their expected completion date. ' +
+    fmtNum(overdueSet.length) + ' requests are past their expected completion date. ' +
     'The largest group is ' + biggestBucket.label.toLowerCase() + ' late (' + fmtNum(biggestBucket.n) + '). ' +
     'Anything beyond 60 days needs the expected completion date reviewed: the original target is no longer ' +
     'credible, so the request should be re-planned, or closed if the work is finished.';
@@ -341,6 +343,16 @@ export function computeDashboard(
     ['overdue', 'Overdue', '#C0453F', 'past their expected completion date', overdueSet],
   ];
   const sqMax = Math.max(1, ...squareDefs.map(([, , , , s]) => s.length));
+  // On track / Overdue / Completed are mutually exclusive but don't quite cover
+  // everything: an unassigned request that isn't yet past its target date is in
+  // neither. Derived so the note can't go stale on a refresh.
+  const uncoveredN = total - (onTrack + overdueSet.length + doneSet.length);
+  const squareCoverageNote =
+    uncoveredN > 0
+      ? 'On track, Overdue and Completed are mutually exclusive and together cover ' +
+        fmtNum(total - uncoveredN) + ' of ' + fmtNum(total) + ' requests; the remaining ' +
+        fmtNum(uncoveredN) + ' are unassigned and not yet past their target date, so they are still in review rather than active.'
+      : 'On track, Overdue and Completed are mutually exclusive and together cover the whole portfolio.';
   // How many requests each practice has in total, so a practice's bar can show
   // what share of ITS OWN work the metric represents (not share of the metric).
   const practiceTotals = new Map<string, number>();
@@ -357,7 +369,7 @@ export function computeDashboard(
     sub,
     pctLabel: total ? pct(set.length, total) + '%' : '—',
     side: Math.round(72 + 86 * Math.sqrt(set.length / sqMax)),
-    byPractice: toBars(groupBy(set.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice'), color, 15).map((r) => {
+    byPractice: toBars(groupBy(set, 'practice'), color, 15).map((r) => {
       const denom = practiceTotals.get(r.label) ?? 0;
       return { ...r, share: denom ? pct(r.n, denom) + '%' : '—' };
     }),
@@ -422,10 +434,11 @@ export function computeDashboard(
     ioOpenedTotal,
     ioCompletedTotal,
     recent: recentSet.length,
-    recentByPractice: toBars(groupBy(recentSet.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice'), '#0B6FA4', 15),
+    recentByPractice: toBars(groupBy(recentSet, 'practice'), '#0B6FA4', 15),
     metricSquares,
+    squareCoverageNote,
     onTrack,
-    onTrackByPractice: toBars(groupBy(onTrackSet.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice'), '#3E9CD6', 15),
+    onTrackByPractice: toBars(groupBy(onTrackSet, 'practice'), '#3E9CD6', 15),
     newTable,
 
 
@@ -474,6 +487,7 @@ export interface DataQuality {
   setupAging: BucketRow[];
   stalledCount: string;
   practiceStack: PracticeStackRow[];
+  stackNote: string;
   reviewTable: DqTableRow[];
   readyCount: string;
   readyOf: string;
@@ -574,7 +588,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
   // as delivery, so the bar totals the practice's real workload.
   const stackCounts = new Map<string, { review: number; delivery: number; overdue: number }>();
   for (const c of co) {
-    if (c.status === 'Discontinued' || HIDDEN_PRACTICES.has(c.practice)) continue;
+    if (c.status === 'Discontinued') continue;
     const k = c.practice || '—';
     const e = stackCounts.get(k) ?? { review: 0, delivery: 0, overdue: 0 };
     if (c.status === 'Unassigned' || c.status === '0%') e.review++;
@@ -591,6 +605,16 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     ...r,
     barPct: Math.round((r.n / stackMax) * 100),
   }));
+  // Why the red segment is smaller than the Overdue card above it. Derived, so a
+  // data refresh can't leave a stale number behind.
+  const reviewOverdue = co.filter(
+    (c) => (c.status === 'Unassigned' || c.status === '0%') && c.xc != null && (c.xc as number) < today,
+  ).length;
+  const stackNote =
+    'Each request is counted once, in the phase it is in. Overdue here means a request ' +
+    'that has started (25%+) and is past its expected completion date. ' +
+    fmtNum(reviewOverdue) + ' requests are past their target date but have not started yet — ' +
+    'they are counted as in review, which is why this red segment is smaller than the Overdue card above.';
 
   // Every request in the review phase, longest-waiting first. Ones past the
   // stall threshold keep the red metric so they still stand out in the list.
@@ -712,6 +736,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     setupAging,
     stalledCount: fmtNum(stalledSetup.length),
     practiceStack,
+    stackNote,
     reviewTable,
     readyCount: fmtNum(ready.length),
     readyOf: fmtNum(atZero.length),
