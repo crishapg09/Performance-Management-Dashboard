@@ -276,6 +276,19 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </Card>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
+        <div style={{ background: '#EDF7F1', border: '1px solid #CDE7D8', borderRadius: 10, padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: '#2E7D5B', fontWeight: 700 }}>Ready to advance</div>
+          <div style={{ fontSize: 40, fontWeight: 700, color: '#2E7D5B', lineHeight: 1, margin: '8px 0 6px', fontVariantNumeric: 'tabular-nums' }}>{dq.readyCount} <span style={{ fontSize: 16, color: '#7FA98F', fontWeight: 600 }}>/ {dq.readyOf}</span></div>
+          <div style={{ fontSize: 12.5, color: '#4B6B58', lineHeight: 1.5 }}>requests at 25% already have objectives, a lead and a target date — ready to move to 50%.</div>
+        </div>
+        <Card>
+          <div style={bigTitle}>Setup contradictions</div>
+          <div style={{ height: 6 }} />
+          <CheckRows items={dq.setupContradictions} />
+        </Card>
+      </div>
+
       <Card style={{ marginTop: 16 }}>
         <div style={bigTitle}>Stalled in setup, by practice</div>
         <div style={subLabel}>Unassigned &gt;14 days · 0%/25% not updated in 30+ days</div>
@@ -296,19 +309,6 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       </div>
 
       <DqTable title="Most stalled setup requests" count={dq.stalledCount} rows={dq.stalledTable} metricLabel="Days stalled" footer={dq.stallNote} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 16 }}>
-        <div style={{ background: '#EDF7F1', border: '1px solid #CDE7D8', borderRadius: 10, padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', color: '#2E7D5B', fontWeight: 700 }}>Ready to advance</div>
-          <div style={{ fontSize: 40, fontWeight: 700, color: '#2E7D5B', lineHeight: 1, margin: '8px 0 6px', fontVariantNumeric: 'tabular-nums' }}>{dq.readyCount} <span style={{ fontSize: 16, color: '#7FA98F', fontWeight: 600 }}>/ {dq.readyOf}</span></div>
-          <div style={{ fontSize: 12.5, color: '#4B6B58', lineHeight: 1.5 }}>requests at 25% already have objectives, a lead and a target date — ready to move to 50%.</div>
-        </div>
-        <Card>
-          <div style={bigTitle}>Setup contradictions</div>
-          <div style={{ height: 6 }} />
-          <CheckRows items={dq.setupContradictions} />
-        </Card>
-      </div>
 
       </div>
       )}
