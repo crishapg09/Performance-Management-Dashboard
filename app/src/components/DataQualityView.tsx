@@ -1,15 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { Dashboard, CheckItem, CompletenessRow, BucketRow, DqTableRow, ReviewPracticeRow } from '../lib/dashboard';
-import type { ColoredBarRow } from '../lib/aggregate';
+import type { Dashboard, CheckItem, CompletenessRow, BucketRow, DqTableRow, PracticeStackRow } from '../lib/dashboard';
 import { Card } from './Card';
 import { KpiStrip } from './KpiStrip';
-
-const SUBTABS = [
-  { id: 'received', label: 'Received & in review' },
-  { id: 'delivery', label: 'Started & in delivery' },
-  { id: 'overdue', label: 'Overdue & closure' },
-] as const;
-type DqTab = (typeof SUBTABS)[number]['id'];
 
 const bigTitle: React.CSSProperties = { fontSize: 13.5, fontWeight: 700 };
 const subLabel: React.CSSProperties = { fontSize: 11.5, color: '#9AA7B2', marginBottom: 16 };
@@ -62,21 +54,6 @@ function BucketBars({ rows, labelWidth = 92 }: { rows: BucketRow[]; labelWidth?:
   );
 }
 
-function MetricBars({ rows, labelWidth, trackBg }: { rows: ColoredBarRow[]; labelWidth: number; trackBg: string }) {
-  if (!rows.length) return <div style={{ fontSize: 12.5, color: '#9AA7B2' }}>None in the current filter.</div>;
-  return (
-    <>
-      {rows.map((row) => (
-        <div key={row.label} style={{ display: 'grid', gridTemplateColumns: `${labelWidth}px 1fr 34px`, alignItems: 'center', gap: 10, marginBottom: 9 }}>
-          <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.label}</div>
-          <div style={{ height: 9, background: trackBg, borderRadius: 5 }}><div style={{ height: '100%', width: `${row.pct}%`, background: row.color, borderRadius: 5 }} /></div>
-          <div style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.n}</div>
-        </div>
-      ))}
-    </>
-  );
-}
-
 function Completeness({ rows }: { rows: CompletenessRow[] }) {
   return (
     <>
@@ -91,21 +68,46 @@ function Completeness({ rows }: { rows: CompletenessRow[] }) {
   );
 }
 
-function ReviewByPractice({ rows }: { rows: ReviewPracticeRow[] }) {
+/** The three lifecycle states, in the order they stack (and their key colours). */
+const STACK_KEYS: { key: 'review' | 'delivery' | 'overdue'; label: string; color: string }[] = [
+  { key: 'review', label: 'In review', color: '#0B6FA4' },
+  { key: 'delivery', label: 'Started & in delivery', color: '#16385C' },
+  { key: 'overdue', label: 'Overdue', color: '#C0453F' },
+];
+
+function PracticeStack({ rows }: { rows: PracticeStackRow[] }) {
   if (!rows.length) return <div style={{ fontSize: 12.5, color: '#9AA7B2' }}>None in the current filter.</div>;
   return (
     <div>
       {rows.map((r) => (
-        <div key={r.label} style={{ display: 'grid', gridTemplateColumns: '190px 1fr 40px', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</div>
-          <div style={{ height: 11, background: '#EEF2F6', borderRadius: 6, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${r.barPct}%`, display: 'flex', borderRadius: 6, overflow: 'hidden' }}>
-              <div title={`${r.unassigned} unassigned`} style={{ width: `${(r.unassigned / r.n) * 100}%`, background: '#E0A21E' }} />
-              <div title={`${r.zero} at 0%`} style={{ width: `${(r.zero / r.n) * 100}%`, background: '#5BA3D0' }} />
+        <div key={r.label} style={{ display: 'grid', gridTemplateColumns: '210px 1fr 44px', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <div title={r.label} style={{ fontSize: 12, color: '#43586B', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</div>
+          <div style={{ height: 14, background: '#EEF2F6', borderRadius: 7, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${r.barPct}%`, display: 'flex', borderRadius: 7, overflow: 'hidden' }}>
+              {STACK_KEYS.map((k) => (
+                <div key={k.key} title={`${r[k.key]} ${k.label.toLowerCase()}`} style={{ width: `${(r[k.key] / r.n) * 100}%`, background: k.color }} />
+              ))}
             </div>
           </div>
-          <div title={`${r.unassigned} unassigned · ${r.zero} at 0%`} style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.n}</div>
+          <div
+            title={STACK_KEYS.map((k) => `${r[k.key]} ${k.label.toLowerCase()}`).join(' · ')}
+            style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+          >
+            {r.n}
+          </div>
         </div>
+      ))}
+    </div>
+  );
+}
+
+function StackLegend() {
+  return (
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      {STACK_KEYS.map((k) => (
+        <span key={k.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#43586B' }}>
+          <span style={{ width: 11, height: 11, borderRadius: 3, background: k.color }} /> {k.label}
+        </span>
       ))}
     </div>
   );
@@ -181,6 +183,57 @@ function DqTable({ title, count, rows, metricLabel, footer, toggle }: { title: s
   );
 }
 
+// The one record-level table at the foot of the page. Each view is the drill-down
+// for one of the three sections above; the toggle swaps between them in place.
+type TableViewId = 'review' | 'cleanup' | 'overdue' | 'notclosed';
+
+const TABLE_VIEWS: {
+  id: TableViewId;
+  tab: string;
+  title: string;
+  metricLabel: string;
+  rows: (dq: Dashboard['dq']) => DqTableRow[];
+  count: (dq: Dashboard['dq']) => string | undefined;
+  footer: (dq: Dashboard['dq']) => string | undefined;
+}[] = [
+  {
+    id: 'review',
+    tab: 'In review',
+    title: 'All requests in review',
+    metricLabel: 'Days waiting',
+    rows: (dq) => dq.reviewTable,
+    count: (dq) => dq.setupTotal,
+    footer: (dq) => dq.stallNote,
+  },
+  {
+    id: 'cleanup',
+    tab: 'Needing cleanup',
+    title: 'Started records needing cleanup',
+    metricLabel: 'Missing / issue',
+    rows: (dq) => dq.flagTable,
+    count: (dq) => dq.flagCount,
+    footer: () => undefined,
+  },
+  {
+    id: 'overdue',
+    tab: 'Overdue',
+    title: 'Most overdue active requests',
+    metricLabel: 'Days over',
+    rows: (dq) => dq.overdueTable,
+    count: () => undefined,
+    footer: (dq) => dq.overdueNote,
+  },
+  {
+    id: 'notclosed',
+    tab: 'Not closed',
+    title: 'Completed or discontinued, but not closed',
+    metricLabel: 'Reason',
+    rows: (dq) => dq.notClosedTable,
+    count: (dq) => dq.notClosedCount,
+    footer: () => 'Once a TA is completed (100%) or discontinued, it should be closed. These records still have no close date.',
+  },
+];
+
 function HeroCard({ bg, border, labelColor, value, valueColor, label, body }: { bg: string; border: string; labelColor: string; value: string; valueColor: string; label: string; body: string }) {
   return (
     <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: '20px 22px', height: 200, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -193,8 +246,7 @@ function HeroCard({ bg, border, labelColor, value, valueColor, label, body }: { 
 
 export function DataQualityView({ d }: { d: Dashboard }) {
   const dq = d.dq;
-  const [tab, setTab] = useState<DqTab>('received');
-  const [closureTab, setClosureTab] = useState<'overdue' | 'notclosed'>('overdue');
+  const [tableView, setTableView] = useState<TableViewId>('review');
   const [printing, setPrinting] = useState(false);
 
   // When printing, render every subtab (below) then open the browser print
@@ -233,35 +285,7 @@ export function DataQualityView({ d }: { d: Dashboard }) {
       </div>
 
       {/* Sub-tab bar (screen only) */}
-      {!printing && (
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #DCE3EA', margin: '22px 0 6px', flexWrap: 'wrap' }}>
-        {SUBTABS.map((t) => {
-          const on = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: 16.5,
-                fontWeight: 700,
-                padding: '12px 20px',
-                color: on ? '#0B5A8A' : '#5B7186',
-                borderBottom: on ? '3px solid #0B5A8A' : '3px solid transparent',
-                marginBottom: -1,
-              }}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-      )}
-
-      {(tab === 'received' || printing) && (
+      {/* ① */}
       <div className="dq-page">
       {/* ===== ① Received & in review ===== */}
       <StageHeading n={1} title="Received & in review — Unassigned · 0%" bg="#0B6FA4" />
@@ -295,28 +319,9 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </Card>
       </div>
 
-      <Card style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div style={bigTitle}>In review, by practice</div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#43586B' }}>
-              <span style={{ width: 11, height: 11, borderRadius: 3, background: '#E0A21E' }} /> Unassigned
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#43586B' }}>
-              <span style={{ width: 11, height: 11, borderRadius: 3, background: '#5BA3D0' }} /> At 0%
-            </span>
-          </div>
-        </div>
-        <div style={subLabel}>not yet picked up by a team, or assigned but not started</div>
-        <ReviewByPractice rows={dq.reviewByPractice} />
-      </Card>
-
-      <DqTable title="All requests in review" count={dq.setupTotal} rows={dq.reviewTable} metricLabel="Days waiting" footer={dq.stallNote} />
-
       </div>
-      )}
 
-      {(tab === 'delivery' || printing) && (
+      {/* ② */}
       <div className="dq-page">
       {/* ===== ② Started & in delivery ===== */}
       <StageHeading n={2} title="Started & in delivery — 25% onwards" bg="#16385C" />
@@ -367,12 +372,9 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </Card>
       </div>
 
-      <DqTable title="Started records needing cleanup" count={dq.flagCount} rows={dq.flagTable} metricLabel="Missing / issue" />
-
       </div>
-      )}
 
-      {(tab === 'overdue' || printing) && (
+      {/* ③ */}
       <div className="dq-page">
       {/* ===== ③ Overdue, at-risk & closure ===== */}
       <StageHeading n={3} title="Overdue, at-risk & closure" bg="#C0453F" />
@@ -400,44 +402,46 @@ export function DataQualityView({ d }: { d: Dashboard }) {
         </div>
       </Card>
 
-      <Card style={{ marginTop: 16 }}>
-        <div style={bigTitle}>Overdue by practice</div>
-        <div style={{ height: 8 }} />
-        <div style={{ maxHeight: 220, overflowY: 'auto', paddingRight: 6 }}><MetricBars rows={dq.overdueByPractice} labelWidth={150} trackBg="#F2EAE9" /></div>
+      </div>
+
+      {/* ===== Portfolio by practice, then the single record-level table ===== */}
+      <div className="dq-page">
+      <Card style={{ marginTop: 34 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={bigTitle}>Where every request sits, by practice</div>
+          <StackLegend />
+        </div>
+        <div style={subLabel}>each request counted once: in review (Unassigned · 0%), started &amp; in delivery (25%+ on or before target), or overdue</div>
+        <PracticeStack rows={dq.practiceStack} />
       </Card>
 
       {printing ? (
         <>
-          <DqTable title="Most overdue active requests" rows={dq.overdueTable} metricLabel="Days over" footer={dq.overdueNote} />
-          <DqTable
-            title="Completed or discontinued, but not closed"
-            count={dq.notClosedCount}
-            rows={dq.notClosedTable}
-            metricLabel="Reason"
-            footer="Once a TA is completed (100%) or discontinued, it should be closed. These records still have no close date."
-          />
+          {TABLE_VIEWS.map((v) => (
+            <DqTable key={v.id} title={v.title} count={v.count(dq)} rows={v.rows(dq)} metricLabel={v.metricLabel} footer={v.footer(dq)} />
+          ))}
         </>
-      ) : closureTab === 'overdue' ? (
-        <DqTable
-          title="Most overdue active requests"
-          rows={dq.overdueTable}
-          metricLabel="Days over"
-          footer={dq.overdueNote}
-          toggle={{ tabs: [{ id: 'overdue', label: 'Overdue' }, { id: 'notclosed', label: 'Not closed' }], active: closureTab, onChange: (id) => setClosureTab(id as 'overdue' | 'notclosed') }}
-        />
       ) : (
-        <DqTable
-          title="Completed or discontinued, but not closed"
-          count={dq.notClosedCount}
-          rows={dq.notClosedTable}
-          metricLabel="Reason"
-          footer="Once a TA is completed (100%) or discontinued, it should be closed. These records still have no close date."
-          toggle={{ tabs: [{ id: 'overdue', label: 'Overdue' }, { id: 'notclosed', label: 'Not closed' }], active: closureTab, onChange: (id) => setClosureTab(id as 'overdue' | 'notclosed') }}
-        />
+        (() => {
+          const v = TABLE_VIEWS.find((t) => t.id === tableView) ?? TABLE_VIEWS[0];
+          return (
+            <DqTable
+              title={v.title}
+              count={v.count(dq)}
+              rows={v.rows(dq)}
+              metricLabel={v.metricLabel}
+              footer={v.footer(dq)}
+              toggle={{
+                tabs: TABLE_VIEWS.map((t) => ({ id: t.id, label: t.tab })),
+                active: v.id,
+                onChange: (id) => setTableView(id as TableViewId),
+              }}
+            />
+          );
+        })()
       )}
       <div style={note}>&nbsp;</div>
       </div>
-      )}
     </div>
   );
 }

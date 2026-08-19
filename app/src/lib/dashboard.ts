@@ -74,13 +74,14 @@ export interface MetricSquare {
   byPractice: ColoredBarRow[];
 }
 export interface LegendItem { label: string; color: string; }
-/** One practice in the review pipeline, split into its Unassigned and 0% parts. */
-export interface ReviewPracticeRow {
+/** One practice, split into the three lifecycle states (mutually exclusive). */
+export interface PracticeStackRow {
   label: string;
   n: number;
   barPct: number;
-  unassigned: number;
-  zero: number;
+  review: number;
+  delivery: number;
+  overdue: number;
 }
 export interface OverdueTableRow {
   id: string; country: string; full: string; practice: string; expDate: string; status: string;
@@ -472,7 +473,7 @@ export interface DataQuality {
   setupFunnel: BucketRow[];
   setupAging: BucketRow[];
   stalledCount: string;
-  reviewByPractice: ReviewPracticeRow[];
+  practiceStack: PracticeStackRow[];
   reviewTable: DqTableRow[];
   readyCount: string;
   readyOf: string;
@@ -494,8 +495,6 @@ export interface DataQuality {
   overdueCount: string;
   overdueBuckets: BucketRow[];
   atRiskCount: string;
-  overdueByRegion: ColoredBarRow[];
-  overdueByPractice: ColoredBarRow[];
   overdueTable: DqTableRow[];
   notClosedCount: string;
   notClosedTable: DqTableRow[];
@@ -570,26 +569,29 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     return { label, n, color, pct: Math.round((n / agMax) * 100) };
   });
 
-  // Team performance: one row per practice, stacked into its Unassigned and 0%
-  // parts, so volume and composition read together.
-  const reviewCounts = new Map<string, { unassigned: number; zero: number }>();
-  for (const c of setupSet) {
-    if (HIDDEN_PRACTICES.has(c.practice)) continue;
+  // One row per practice across the whole lifecycle. The three segments are
+  // mutually exclusive: a request past its target date counts as overdue, not
+  // as delivery, so the bar totals the practice's real workload.
+  const stackCounts = new Map<string, { review: number; delivery: number; overdue: number }>();
+  for (const c of co) {
+    if (c.status === 'Discontinued' || HIDDEN_PRACTICES.has(c.practice)) continue;
     const k = c.practice || '—';
-    const e = reviewCounts.get(k) ?? { unassigned: 0, zero: 0 };
-    if (c.status === 'Unassigned') e.unassigned++;
-    else e.zero++;
-    reviewCounts.set(k, e);
+    const e = stackCounts.get(k) ?? { review: 0, delivery: 0, overdue: 0 };
+    if (c.status === 'Unassigned' || c.status === '0%') e.review++;
+    else if (c.status !== '100%' && c.xc != null && (c.xc as number) < today) e.overdue++;
+    else e.delivery++;
+    stackCounts.set(k, e);
   }
-  const reviewRows = [...reviewCounts.entries()]
-    .map(([label, v]) => ({ label, ...v, n: v.unassigned + v.zero }))
+  const stackRows = [...stackCounts.entries()]
+    .map(([label, v]) => ({ label, ...v, n: v.review + v.delivery + v.overdue }))
     .sort((a, b) => b.n - a.n)
     .slice(0, 15);
-  const reviewMax = Math.max(1, ...reviewRows.map((r) => r.n));
-  const reviewByPractice: ReviewPracticeRow[] = reviewRows.map((r) => ({
+  const stackMax = Math.max(1, ...stackRows.map((r) => r.n));
+  const practiceStack: PracticeStackRow[] = stackRows.map((r) => ({
     ...r,
-    barPct: Math.round((r.n / reviewMax) * 100),
+    barPct: Math.round((r.n / stackMax) * 100),
   }));
+
   // Every request in the review phase, longest-waiting first. Ones past the
   // stall threshold keep the red metric so they still stand out in the list.
   const reviewTable = [...setupSet]
@@ -682,8 +684,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     { label: '>60 days', n: o3, color: '#C0453F' },
   ].map((b) => ({ ...b, pct: Math.round((b.n / obMax) * 100) }));
   const atRisk = activeCO.filter((c) => c.xc != null && (c.xc as number) >= today && (c.xc as number) <= today + 30);
-  const overdueByRegion = toBars(groupBy(overdueSet, 'region'), '#C0453F', 7);
-  const overdueByPractice = toBars(groupBy(overdueSet.filter((c) => !HIDDEN_PRACTICES.has(c.practice)), 'practice'), '#C0453F', 15);
   const overdueTable = overdueSet.slice(0, 12).map((c) => row(c, '+' + Math.round(today - (c.xc as number)) + 'd', '#C0453F'));
 
   const notClosed = co.filter((c) => (c.status === '100%' || c.status === 'Discontinued') && !c.cl);
@@ -711,7 +711,7 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     setupFunnel,
     setupAging,
     stalledCount: fmtNum(stalledSetup.length),
-    reviewByPractice,
+    practiceStack,
     reviewTable,
     readyCount: fmtNum(ready.length),
     readyOf: fmtNum(atZero.length),
@@ -730,8 +730,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     overdueCount: fmtNum(overdueSet.length),
     overdueBuckets,
     atRiskCount: fmtNum(atRisk.length),
-    overdueByRegion,
-    overdueByPractice,
     overdueTable,
     notClosedCount: fmtNum(notClosed.length),
     notClosedTable,
