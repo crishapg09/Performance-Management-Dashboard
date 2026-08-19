@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Dashboard, CheckItem, CompletenessRow, QualityRegionRow, BucketRow, DqTableRow, TransitionCard } from '../lib/dashboard';
+import type { Dashboard, CheckItem, CompletenessRow, QualityRegionRow, BucketRow, DqTableRow } from '../lib/dashboard';
 import type { ColoredBarRow } from '../lib/aggregate';
 import { Card } from './Card';
 import { KpiStrip } from './KpiStrip';
@@ -185,23 +185,6 @@ function HeroCard({ bg, border, labelColor, value, valueColor, label, body }: { 
   );
 }
 
-function TransitionCards({ cards }: { cards: TransitionCard[] }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: 12, marginTop: 16 }}>
-      {cards.map((t) => (
-        <div key={t.label} style={{ background: '#F7FAFC', border: '1px dashed #C7D6E0', borderRadius: 10, padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#43586B' }}>{t.label}</div>
-            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: '#9AA7B2' }}>coming soon</div>
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: '#C7D0D8', marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>—</div>
-          <div style={{ fontSize: 11.5, color: '#9AA7B2', marginTop: 2 }}>{t.sub}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function DataQualityView({ d }: { d: Dashboard }) {
   const dq = d.dq;
   const [tab, setTab] = useState<DqTab>('received');
@@ -326,8 +309,6 @@ export function DataQualityView({ d }: { d: Dashboard }) {
           <CheckRows items={dq.setupContradictions} />
         </Card>
       </div>
-
-      <TransitionCards cards={dq.transitionCards} />
 
       </div>
       )}

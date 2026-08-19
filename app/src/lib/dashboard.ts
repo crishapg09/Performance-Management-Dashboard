@@ -457,11 +457,6 @@ export interface DqTableRow {
   stBg: string;
   stFg: string;
 }
-export interface TransitionCard {
-  label: string;
-  sub: string;
-}
-
 export interface DataQuality {
   kpis: KPI[];
   // ① Received & in review (Unassigned · 0% · 25%)
@@ -477,7 +472,6 @@ export interface DataQuality {
   readyCount: string;
   readyOf: string;
   setupContradictions: CheckItem[];
-  transitionCards: TransitionCard[];
   stallNote: string;
   // ② Started & in delivery (50%+)
   deliveryTotal: string;
@@ -581,11 +575,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     { n: fmtNum(noLeadAssigned.length), label: 'Past assignment, but no TA lead', sub: '0% or 25% means a lead should already be assigned', color: '#C0453F' },
   ];
 
-  const transitionCards: TransitionCard[] = [
-    { label: 'Unassigned → 0%', sub: 'days to assign a TA lead' },
-    { label: '0% → 25%', sub: 'days to agree scope with the CO' },
-    { label: '25% → 50%', sub: 'days to formally start delivery' },
-  ];
 
   const stallNote =
     'Days stalled = today (' + formatDate(today) + ') − last Updated date (for Unassigned, − the date received). ' +
@@ -722,7 +711,6 @@ function computeDataQuality(co: TACase[], today: number): DataQuality {
     readyCount: fmtNum(ready.length),
     readyOf: fmtNum(at25.length),
     setupContradictions,
-    transitionCards,
     stallNote,
     deliveryTotal: fmtNum(delN),
     completeness,
