@@ -108,7 +108,7 @@ function Completeness({ rows }: { rows: CompletenessRow[] }) {
 function ReviewByPractice({ rows }: { rows: ReviewPracticeRow[] }) {
   if (!rows.length) return <div style={{ fontSize: 12.5, color: '#9AA7B2' }}>None in the current filter.</div>;
   return (
-    <div style={{ maxHeight: 300, overflowY: 'auto', paddingRight: 6 }}>
+    <div>
       {rows.map((r) => (
         <div key={r.label} style={{ display: 'grid', gridTemplateColumns: '190px 1fr 40px', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <div style={{ fontSize: 12, color: '#43586B', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</div>
