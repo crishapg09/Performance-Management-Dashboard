@@ -73,7 +73,6 @@ export interface MetricSquare {
   sub: string;
   byPractice: ColoredBarRow[];
 }
-export interface LegendItem { label: string; color: string; }
 /** One practice, split into the three lifecycle states (mutually exclusive). */
 export interface PracticeStackRow {
   label: string;
@@ -137,8 +136,6 @@ export interface Dashboard {
   overdueTableFinal: OverdueTableRow[];
 
   byPractice: StackedRow[];
-  staffBars: StackedRow[];
-  staffLegend: LegendItem[];
   loadN: number;
   loadMin: number;
   loadMax: number;
@@ -146,7 +143,6 @@ export interface Dashboard {
   loadMinCountLabel: string;
   loadAvg: string;
   avgPos: number;
-  distinctStaff: number;
   unassigned: number;
 
   // Data Quality — stage-aware (see DataQuality)
@@ -238,24 +234,6 @@ export function computeDashboard(
     if (state.lead !== 'All') parts.push('led by ' + state.lead);
     filterTitle = parts.join('  ·  ');
   }
-
-  // staff bars (stacked by status)
-  const staffGrp = groupBy(F.filter((c) => c.lead), 'lead');
-  const staffMax = Math.max(1, ...staffGrp.map((r) => r.n));
-  const staffBars: StackedRow[] = staffGrp.map((r) => {
-    const rowCases = F.filter((c) => c.lead === r.label);
-    const segs = STATUS_ORDER.map((s) => ({ w: r.n ? (rowCases.filter((c) => c.status === s).length / r.n) * 100 : 0, color: STATUS_COLORS[s] })).filter((seg) => seg.w > 0);
-    const byPrac = new Map<string, number>();
-    for (const c of rowCases) {
-      const k = c.practice || '—';
-      byPrac.set(k, (byPrac.get(k) ?? 0) + 1);
-    }
-    let top = '', topN = 0;
-    for (const [k, v] of byPrac) if (v > topN) { top = k; topN = v; }
-    const sub = byPrac.size > 1 ? top + ' +' + (byPrac.size - 1) + ' more' : top;
-    return { label: r.label, n: r.n, barPct: Math.round((r.n / staffMax) * 100), segs, sub };
-  });
-  const staffLegend: LegendItem[] = STATUS_ORDER.map((s) => ({ label: s, color: STATUS_COLORS[s] }));
 
   // requests-by (stacked; rendered as solid bar + TAs/Leads), excluding practice "Other"
   const stackByStatus = (key: keyof TACase, limit: number): StackedRow[] => {
@@ -449,8 +427,6 @@ export function computeDashboard(
     overdueTableFinal,
 
     byPractice: stackByStatus('practice', 15),
-    staffBars,
-    staffLegend,
     loadN,
     loadMin,
     loadMax,
@@ -458,7 +434,6 @@ export function computeDashboard(
     loadMinCountLabel: loadMinCount + (loadMinCount === 1 ? ' staff member' : ' staff members'),
     loadAvg: loadAvgNum ? loadAvgNum.toFixed(1) : '0',
     avgPos,
-    distinctStaff: new Set(F.filter((c) => c.lead).map((c) => c.lead)).size,
     unassigned: F.filter((c) => !c.lead).length,
 
     dq: computeDataQuality(FCO, TODAY),

@@ -72,18 +72,6 @@ function RequestTable({ title, rows, metricLabel, daysColor, footer, toggle }: {
   );
 }
 
-function StackTrack({ row, height, track = '#EEF2F6' }: { row: StackedRow; height: number; track?: string }) {
-  return (
-    <div style={{ height, background: track, borderRadius: height / 2, overflow: 'hidden' }}>
-      <div style={{ height: '100%', width: `${row.barPct}%`, display: 'flex', borderRadius: height / 2, overflow: 'hidden' }}>
-        {row.segs.map((s, i) => (
-          <div key={i} style={{ width: `${s.w}%`, background: s.color }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 type SortKey = 'n' | 'leads' | 'avg';
 
 const SORT_COLS: { key: SortKey; label: string; color: string; width: number }[] = [
@@ -418,36 +406,6 @@ export function PerformanceView({ d }: { d: Dashboard }) {
             Avg {d.loadAvg}
           </span>
           <span style={{ position: 'absolute', right: 0 }}>Max {d.loadMax}</span>
-        </div>
-      </Card>
-
-      {/* busiest TA lead staff */}
-      <Card style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-          <div style={bigCardTitle}>Busiest TA lead staff <span style={{ fontWeight: 400, color: '#9AA7B2', fontSize: 12 }}>— bar coloured by implementation status</span></div>
-          <div style={{ fontSize: 12, color: '#7A8C9C' }}>{d.distinctStaff} distinct leads · <span style={{ color: '#C0453F', fontWeight: 700 }}>{d.unassigned}</span> requests unassigned</div>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 16px', marginBottom: 16 }}>
-          {d.staffLegend.map((s) => (
-            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, display: 'inline-block' }} />
-              <span style={{ fontSize: 11.5, color: '#43586B' }}>{s.label}</span>
-            </div>
-          ))}
-        </div>
-        <div style={{ columnCount: 2, columnGap: 40, maxHeight: 340, overflowY: 'auto', paddingRight: 6 }}>
-          {d.staffBars.map((row) => (
-            <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '185px 1fr 34px', alignItems: 'center', gap: 10, breakInside: 'avoid', marginBottom: 13 }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: '#43586B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.label}</div>
-                {row.sub && (
-                  <div style={{ fontSize: 10.5, color: '#9AA7B2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.sub}</div>
-                )}
-              </div>
-              <StackTrack row={row} height={11} />
-              <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.n}</div>
-            </div>
-          ))}
         </div>
       </Card>
 
