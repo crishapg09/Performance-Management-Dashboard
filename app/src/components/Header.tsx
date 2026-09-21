@@ -1,12 +1,16 @@
 interface HeaderProps {
   metaTotal: string;
   isQuality: boolean;
+  isFeedback: boolean;
+  surveyN: number;
+  surveyOffices: number;
+  surveyAsOf: string;
   coFrom: string;
   coUnassigned: string;
   coverage: string;
 }
 
-export function Header({ metaTotal, isQuality, coFrom, coUnassigned, coverage }: HeaderProps) {
+export function Header({ metaTotal, isQuality, isFeedback, surveyN, surveyOffices, surveyAsOf, coFrom, coUnassigned, coverage }: HeaderProps) {
   return (
     <div style={{ maxWidth: 1340, margin: '0 auto', padding: '0 24px' }}>
       <div
@@ -28,7 +32,12 @@ export function Header({ metaTotal, isQuality, coFrom, coUnassigned, coverage }:
           </div>
         </div>
         <div style={{ textAlign: 'right', fontSize: 12, color: '#5B7186', lineHeight: 1.6 }}>
-          {isQuality ? (
+          {isFeedback ? (
+            <div>
+              <span style={{ fontWeight: 700, color: '#0F2238' }}>{surveyN}</span> survey responses &middot;{' '}
+              <span style={{ fontWeight: 700, color: '#0F2238' }}>{surveyOffices}</span> country offices
+            </div>
+          ) : isQuality ? (
             <div>
               <span style={{ fontWeight: 700, color: '#0F2238' }}>{coFrom}</span> from COs &middot;{' '}
               <span style={{ fontWeight: 700, color: '#0F2238' }}>{coUnassigned}</span> with no CO assigned
@@ -38,7 +47,7 @@ export function Header({ metaTotal, isQuality, coFrom, coUnassigned, coverage }:
               <span style={{ fontWeight: 700, color: '#0F2238' }}>{metaTotal}</span> CO requests in source
             </div>
           )}
-          <div>{coverage} &middot; as of 15 Sep 2026</div>
+          <div>{isFeedback ? `REACH TA Satisfaction Survey · as of ${surveyAsOf}` : `${coverage} · as of 21 Sep 2026`}</div>
         </div>
       </div>
     </div>

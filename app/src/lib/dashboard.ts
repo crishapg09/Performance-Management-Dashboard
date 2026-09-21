@@ -4,7 +4,7 @@ import { mean, fmtNum, pct } from './format';
 import { groupBy, toBars, optionCounts, type ColoredBarRow } from './aggregate';
 import { formatDate, monthIndex2026, MONTHS } from './dates';
 
-export type ViewId = 'overview' | 'quality';
+export type ViewId = 'overview' | 'quality' | 'feedback';
 
 export interface FilterState {
   view: ViewId;
@@ -96,6 +96,7 @@ export interface ObjPracticeRow { label: string; n: number; pct: number; pctLabe
 export interface Dashboard {
   isOverview: boolean;
   isQuality: boolean;
+  isFeedback: boolean;
   viewTabs: ToggleButton[];
 
   metaTotal: string;
@@ -375,7 +376,7 @@ export function computeDashboard(
     }),
   }));
 
-  const viewTabs: ToggleButton[] =([['overview', 'Performance'], ['quality', 'Data Quality Review']] as [ViewId, string][]).map(([v, label]) => ({
+  const viewTabs: ToggleButton[] =([['overview', 'Performance'], ['quality', 'Data Quality Review'], ['feedback', 'Feedback']] as [ViewId, string][]).map(([v, label]) => ({
     label, on: state.view === v, bg: state.view === v ? '#16385C' : '#fff', fg: state.view === v ? '#fff' : '#43586B', bd: state.view === v ? '#16385C' : '#D5DEE6',
   }));
 
@@ -393,7 +394,7 @@ export function computeDashboard(
         { value: fmtNum(routineN), color: '#0B6FA4', sub: (total ? pct(routineN, total) + '%' : '—') + ' routine' },
       ],
     },
-    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: ofAll(recentSet.length) + ' · new since 16 Aug 2026', accent: '#1CABE2', color: '#0F2238' },
+    { label: 'Received last 30 days', value: fmtNum(recentSet.length), sub: ofAll(recentSet.length) + ' · new since 22 Aug 2026', accent: '#1CABE2', color: '#0F2238' },
     { label: 'Active & on track', value: fmtNum(onTrack), sub: ofAll(onTrack) + ' · in progress, not overdue', accent: '#3E9CD6', color: '#3E9CD6' },
     { label: 'Completed', value: fmtNum(doneN), sub: ofAll(doneN) + ' reached 100%', accent: '#2E7D5B', color: '#2E7D5B' },
     { label: 'Overdue', value: fmtNum(overdueSet.length), sub: ofAll(overdueSet.length) + ' · past target date', accent: '#C0453F', color: '#C0453F' },
@@ -402,6 +403,7 @@ export function computeDashboard(
   return {
     isOverview: state.view === 'overview',
     isQuality: state.view === 'quality',
+    isFeedback: state.view === 'feedback',
     viewTabs,
     metaTotal: fmtNum(ALL),
     coverage: (() => {

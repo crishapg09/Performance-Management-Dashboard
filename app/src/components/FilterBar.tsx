@@ -43,6 +43,8 @@ interface FilterBarProps {
   quarterChips: ToggleButton[];
   onToggleQuarter: (v: string) => void;
   onReset: () => void;
+  /** Feedback is not joined to the request data, so it shows the tabs only. */
+  tabsOnly?: boolean;
 }
 
 export function FilterBar({
@@ -67,6 +69,7 @@ export function FilterBar({
   quarterChips,
   onToggleQuarter,
   onReset,
+  tabsOnly = false,
 }: FilterBarProps) {
   return (
     <div
@@ -82,7 +85,7 @@ export function FilterBar({
     >
       <div style={{ maxWidth: 1340, margin: '0 auto', padding: '12px 24px' }}>
         {/* View tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: tabsOnly ? 0 : 14 }}>
           {viewTabs.map((v) => (
             <button
               key={v.label}
@@ -104,6 +107,8 @@ export function FilterBar({
           ))}
         </div>
 
+        {!tabsOnly && (
+        <>
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           {/* Type segmented (prominent) */}
           <div>
@@ -286,6 +291,8 @@ export function FilterBar({
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

@@ -5,10 +5,13 @@ import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { PerformanceView } from './components/PerformanceView';
 import { DataQualityView } from './components/DataQualityView';
+import { FeedbackView } from './components/FeedbackView';
+import survey from './data/survey.json';
 
 const VIEW_BY_LABEL: Record<string, ViewId> = {
   Performance: 'overview',
   'Data Quality Review': 'quality',
+  Feedback: 'feedback',
 };
 
 function App() {
@@ -39,9 +42,11 @@ function App() {
         paddingBottom: 60,
       }}
     >
-      <Header metaTotal={d.metaTotal} isQuality={d.isQuality} coFrom={d.coFrom} coUnassigned={d.coUnassigned} coverage={d.coverage} />
+      <Header metaTotal={d.metaTotal} isQuality={d.isQuality} isFeedback={d.isFeedback}
+        surveyN={survey.kpi.responses} surveyOffices={survey.officeTotal} surveyAsOf={survey.asOf} coFrom={d.coFrom} coUnassigned={d.coUnassigned} coverage={d.coverage} />
 
       <FilterBar
+        tabsOnly={d.isFeedback}
         viewTabs={d.viewTabs}
         onView={onView}
         typeBtns={d.typeBtns}
@@ -67,6 +72,7 @@ function App() {
 
       <div style={{ maxWidth: 1340, margin: '0 auto', padding: '0 24px' }}>
         {/* Active filter summary */}
+        {!d.isFeedback && (
         <div style={{ padding: '20px 2px 4px' }}>
           <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', color: '#0F2238' }}>{d.filterTitle}</div>
           <div style={{ fontSize: 13, color: '#5B7186', marginTop: 5 }}>
@@ -74,9 +80,12 @@ function App() {
             <span style={{ color: '#9AA7B2' }}>({d.pctOfAll} of all)</span>
           </div>
         </div>
+        )}
+        {d.isFeedback && <div style={{ padding: '20px 2px 0' }} />}
 
         {d.isOverview && <PerformanceView d={d} />}
         {d.isQuality && <DataQualityView d={d} />}
+        {d.isFeedback && <FeedbackView />}
       </div>
     </div>
   );

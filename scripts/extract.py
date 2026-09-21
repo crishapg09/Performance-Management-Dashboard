@@ -33,7 +33,8 @@ import datetime
 
 # ---- source layout -------------------------------------------------------
 # The export has a one-cell title row ("Case Report") followed by a real
-# header row, then the data. These are the 23 columns we expect, in order.
+# header row, then the data. These are the columns we expect, in order. The
+# check is strict: a layout change must be reviewed rather than absorbed.
 EXPECTED_HEADER = (
     'Case Report', 'Request Type', 'Expected Start Date', 'Expected Completion Date',
     'Office/Division', 'Region', 'Requested For', 'Requested by', 'Short description',
@@ -41,6 +42,7 @@ EXPECTED_HEADER = (
     'Global Practice and Cross Sectoral Teams', 'Primary Programme Offer',
     'Assigned to', 'Implementation Status', 'Created', 'Opened', 'Updated',
     'Resolved', 'Closed', 'Resolution code', 'State', 'Details/Description',
+    'Collaborators',   # added in the 21 Sep 2026 export; not used by the dashboard
 )
 
 # Requests with these resolution codes are administrative non-work — voided,
