@@ -47,7 +47,7 @@ export function Header({ metaTotal, isQuality, isFeedback, surveyN, surveyOffice
               <span style={{ fontWeight: 700, color: '#0F2238' }}>{metaTotal}</span> CO requests in source
             </div>
           )}
-          <div>{isFeedback ? `REACH TA Satisfaction Survey · as of ${surveyAsOf}` : `${coverage} · as of 21 Sep 2026`}</div>
+          <div>{isFeedback ? `REACH TA Satisfaction Survey · as of ${surveyAsOf}` : `${coverage} · as of 23 Sep 2026`}</div>
         </div>
       </div>
     </div>
