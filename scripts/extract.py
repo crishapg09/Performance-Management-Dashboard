@@ -43,6 +43,7 @@ EXPECTED_HEADER = (
     'Assigned to', 'Implementation Status', 'Created', 'Opened', 'Updated',
     'Resolved', 'Closed', 'Resolution code', 'State', 'Details/Description',
     'Collaborators',   # added in the 21 Sep 2026 export; not used by the dashboard
+    'Number',          # the case number (CS…), added 24 Sep 2026; joins the satisfaction survey
 )
 
 # Requests with these resolution codes are administrative non-work — voided,
@@ -61,6 +62,7 @@ C_PRACTICE, C_OFFER, C_LEAD, C_STATUS = 13, 14, 15, 16
 C_CREATED, C_OPENED, C_UPDATED, C_RESOLVED, C_CLOSED = 17, 18, 19, 20, 21
 C_RESOLUTION, C_STATE = 22, 23  # State is captured in the export but unused here
 C_DETAILS = 24  # rich-text "Details/Description" — the authoritative description
+C_CASE = 26     # case number (CS…); not stored here — scripts/extract_survey.py joins the survey on it
 
 # Placeholder text people type instead of a real description. Compared against
 # the cleaned, lower-cased value; PREFIXES also catch "please add a description

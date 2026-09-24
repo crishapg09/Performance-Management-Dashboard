@@ -3,25 +3,29 @@
 Extract the REACH TA satisfaction survey into the dashboard's Feedback data file.
 
 Usage:
-    python scripts/extract_survey.py <qualitative.xlsx> [<ratings.xlsx>]
+    python scripts/extract_survey.py <analysis.xlsx> <case_export.xlsx> [--as-of=YYYY-MM-DD]
 
-  qualitative.xlsx  the workbook carrying the "Comment Data" sheet: one row per
-                    response, with the coded positive / improvement themes and
-                    the data-quality flags.
-  ratings.xlsx      optional; the workbook carrying the "Cleaned Data" sheet,
-                    which holds the numeric satisfaction / quality / timeliness
-                    / recommendation scores. Joined on the response ID.
+  analysis.xlsx     REACH_TA_Survey_Analysis_FINAL.xlsx: the "Merged data" sheet
+                    (one row per response, ratings and coded themes) and the
+                    "Response data" sheet (the raw open-text answers).
+  case_export.xlsx  the ServiceNow case export (the same file scripts/extract.py
+                    reads). Its "Number" column is the case number (CS…) that
+                    respondents quote as "TA Case Number".
 
-Writes app/src/data/survey.json.
+Writes app/src/data/survey.json: one record per response, each carrying the
+request attributes the filter bar needs (type, region, office, practice,
+programme offer) from the case it rates. The app normalises those with the
+same maps as the request data and computes every figure at render time, so
+the Feedback tab responds to the filters.
 
-Why two files: the qualitative export does not carry the rating columns, and the
-ratings export lags it (it covers fewer responses). Every response present in
-both is matched on ID; the extractor reports how many were matched so the
-coverage is visible rather than assumed.
+Why the case number and not the request id: ServiceNow numbers requests (CSR…)
+and cases (CS…) from separate counters, so the two never line up. The join is
+on the case number only; the extractor reports how many responses matched and
+how many of those agree on the country office, as a check.
 
-The survey identifies requests by a case number (CS…) that does not correspond
-to the request dataset's own identifier (CSR…), so this data is NOT joined to
-the request portfolio. The Feedback view reports it on its own.
+The join uses the FULL export, including requests later voided, duplicated or
+discontinued: the dashboard drops those from the request data, but a
+respondent still rated the work, so the feedback stays in.
 
 Requires: openpyxl  (pip install openpyxl)
 """
@@ -57,9 +61,6 @@ SCALES = {
 # a non-answer in the open-text field: written, but not substantive
 NON_SUBSTANTIVE = {'', 'n/a', 'na', 'no comment', 'no comments', 'none', 'nil', '.', '-', '..', '...'}
 
-TYPE = {'Regular': 'Routine', 'Big Ticket Item': 'Big Ticket'}
-BANDS = [(4.5, 'a'), (4.0, 'b'), (3.5, 'c'), (0.0, 'd')]
-
 
 def load(path, sheet):
     """Rows of `sheet`, finding the header beneath the sheet's title block."""
@@ -77,6 +78,29 @@ def load(path, sheet):
     header = [str(h).strip() if h is not None else '' for h in rows[hi]]
     data = [r for r in rows[hi + 1:] if any(c not in (None, '') for c in r)]
     return {h: i for i, h in enumerate(header)}, data
+
+
+def load_cases(path):
+    """Case number (CS…) -> the request attributes the filter bar uses, raw."""
+    import openpyxl
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    ws = wb[wb.sheetnames[0]]
+    ws.reset_dimensions()
+    rows = ws.iter_rows(values_only=True)
+    idx = {str(h).strip(): i for i, h in enumerate(next(rows)) if h is not None}
+    need = {'Number': 'cs', 'Case Report': 'req', 'Request Type': 'type', 'Region': 'reg',
+            'Office/Division': 'off', 'Global Practice and Cross Sectoral Teams': 'pr',
+            'Primary Programme Offer': 'of'}
+    missing = [c for c in need if c not in idx]
+    if missing:
+        raise SystemExit(f'ERROR: the case export has no {", ".join(missing)} column(s)')
+    out = {}
+    for r in rows:
+        v = {k: ('' if r[idx[c]] is None else ' '.join(str(r[idx[c]]).split())) for c, k in need.items()}
+        if v['cs']:
+            out[v.pop('cs')] = v
+    wb.close()
+    return out
 
 
 def score(row, idx, col):
@@ -103,33 +127,14 @@ def txt(row, idx, col):
     return ' '.join(str(row[i]).split())
 
 
-def num(row, idx, col):
-    if col not in idx:
-        return None
-    try:
-        return float(row[idx[col]])
-    except (TypeError, ValueError):
-        return None
-
-
-def mean(v):
-    return round(sum(v) / len(v), 2) if v else None
-
-
-def clip(s, n=240):
-    if len(s) <= n:
-        return s
-    cut = s[:n]
-    sp = cut.rfind(' ')
-    return (cut[:sp] if sp > n * 0.6 else cut).rstrip(' ,.;:') + '…'
-
-
 def main():
     if len(sys.argv) < 2:
         raise SystemExit(__doc__.strip())
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     opts = [a for a in sys.argv[1:] if a.startswith('--')]
-    path = args[0]
+    if len(args) != 2:
+        raise SystemExit(__doc__.strip())
+    path, case_path = args
     as_of = next((o.split('=', 1)[1] for o in opts if o.startswith('--as-of=')), None)
     import datetime
     d = datetime.datetime.strptime(as_of, '%Y-%m-%d') if as_of else datetime.datetime.now()
@@ -142,13 +147,14 @@ def main():
     # "substantive" — taking the text from here keeps both counts faithful.
     ridx, rrows = load(path, 'Response data')
     raw = {txt(r, ridx, 'ID'): txt(r, ridx, 'Open comment') for r in rrows}
-    for col in ('ID', 'Country Office', 'Case Type', 'Open comment',
+    for col in ('ID', 'Country Office', 'TA Case Number', 'Open comment',
                 'Satisfaction', 'Quality', 'Timeliness', 'Contribution', 'Recommend 0\u201310'):
         if col not in idx:
             raise SystemExit(f'ERROR: "Merged data" is missing the column "{col}". '
                              f'Found: {", ".join(k for k in idx if k)}')
 
-    out = {}
+    cases = load_cases(case_path)
+
     manual_used = 0
     recs = []
     for r in rows:
@@ -162,109 +168,52 @@ def main():
             rec_score = float(txt(r, idx, 'Recommend 0\u201310'))
         except ValueError:
             rec_score = None
-        recs.append({
-            'id': txt(r, idx, 'ID'),
-            'office': txt(r, idx, 'Country Office'),
-            'type': TYPE.get(txt(r, idx, 'Case Type'), txt(r, idx, 'Case Type')) or 'Unclassified',
-            'body': body, 'written': written, 'substantive': substantive,
-            'pos': pos, 'imp': imp, 'flag': flag,
+        office = txt(r, idx, 'Country Office')
+        case = cases.get(txt(r, idx, 'TA Case Number'))
+        rec = {
+            'id': txt(r, idx, 'ID'), 'o': office,
+            'x': body, 'w': 1 if written else 0, 'sb': 1 if substantive else 0,
+            'p': pos, 'i': imp, 'f': flag,
             'sat': score(r, idx, 'Satisfaction'), 'qual': score(r, idx, 'Quality'),
             'time': score(r, idx, 'Timeliness'), 'contrib': score(r, idx, 'Contribution'),
             'rec': rec_score,
-        })
+        }
+        if case:
+            rec['c'] = case
+        recs.append(rec)
 
-    out['kpi'] = {
-        'responses': len(recs),
-        'written': sum(1 for x in recs if x['written']),
-        'substantive': sum(1 for x in recs if x['substantive']),
-        'improvement': sum(1 for x in recs if x['imp']),
-        'flags': sum(1 for x in recs if x['flag']),
-    }
-
-    acc = {k: [x[k] for x in recs if x[k] is not None] for k in ('sat', 'qual', 'time', 'rec', 'contrib')}
-    out['avg'] = {k: mean(v) for k, v in acc.items()}
-    out['avgN'] = {k: len(v) for k, v in acc.items()}
-
-    pos, imp, flag, pos_by_type = {}, {}, {}, {}
-    for x in recs:
-        for th in [t.strip() for t in x['pos'].split(';') if t.strip()]:
-            pos[th] = pos.get(th, 0) + 1
-            pos_by_type.setdefault(th, {'Routine': 0, 'Big Ticket': 0, 'Unclassified': 0})
-            pos_by_type[th][x['type']] = pos_by_type[th].get(x['type'], 0) + 1
-        if x['imp']:
-            imp[x['imp']] = imp.get(x['imp'], 0) + 1
-        if x['flag']:
-            flag[x['flag']] = flag.get(x['flag'], 0) + 1
-
-    srt = lambda d: sorted(d.items(), key=lambda kv: -kv[1])
-    out['positive'] = [{'label': k, 'n': v} for k, v in srt(pos)]
-    out['improvement'] = [{'label': k, 'n': v} for k, v in srt(imp)]
-    out['flags'] = [{'label': k, 'n': v} for k, v in srt(flag)]
-    out['posByType'] = [dict({'label': k}, **pos_by_type[k]) for k, _ in srt(pos)]
-
-    offices = {}
-    for x in recs:
-        if not x['office']:
-            continue
-        e = offices.setdefault(x['office'], {'n': 0, 'sat': [], 'qual': [], 'time': [],
-                                             'good': [], 'fix': []})
-        e['n'] += 1
-        for k in ('sat', 'qual', 'time'):
-            if x[k] is not None:
-                e[k].append(x[k])
-        if x['substantive'] and len(x['body']) >= 35:
-            if x['pos']:
-                e['good'].append((x['body'], x['sat'], x['pos'].split(';')[0].strip()))
-            if x['imp']:
-                e['fix'].append((x['body'], x['sat'], x['imp']))
-
-    unmapped, pts = [], []
-    for off, e in sorted(offices.items(), key=lambda kv: -kv[1]['n']):
+    offices = sorted({x['o'] for x in recs if x['o']})
+    coords = {}
+    for off in offices:
         if off in NOT_ON_MAP or off not in COORDS:
-            unmapped.append((off, e['n']))
             continue
         lon, lat = COORDS[off]
-        p = {'o': off, 'n': e['n'],
-             'x': round((lon + 180) / 360 * 1000, 1),
-             'y': round((90 - lat) / 180 * 500, 1),
-             'sat': mean(e['sat']), 'qual': mean(e['qual']), 'time': mean(e['time']),
-             'r': len(e['sat'])}
-        if e['good']:
-            t, _, th = sorted(e['good'], key=lambda z: (-(z[1] or 0), len(z[0])))[0]
-            p['g'] = {'t': clip(t), 'th': th}
-        if e['fix']:
-            t, _, th = sorted(e['fix'], key=lambda z: abs(len(z[0]) - 150))[0]
-            p['f'] = {'t': clip(t), 'th': th}
-        pts.append(p)
-    out['map'] = pts
+        coords[off] = [round((lon + 180) / 360 * 1000, 1), round((90 - lat) / 180 * 500, 1)]
 
-    out['comments'] = [{'o': x['office'], 't': x['type'], 'x': x['body'], 'p': x['pos'],
-                        'i': x['imp'], 'f': x['flag'], 's': x['sat']}
-                       for x in recs if x['substantive']]
-
-    counts = {}
-    for x in recs:
-        counts[x['type']] = counts.get(x['type'], 0) + 1
-    out['asOf'] = as_of_label
-    out['caseTypeCounts'] = counts
-    out['officeTotal'] = len(offices)
-
+    out = {'asOf': as_of_label, 'responses': recs, 'coords': coords}
     with open(OUT, 'w', encoding='utf-8') as fh:
         json.dump(out, fh, ensure_ascii=False, separators=(',', ':'))
 
-    k = out['kpi']
-    print(f"Wrote {os.path.relpath(OUT, os.path.join(HERE, '..'))}")
-    print(f"  {k['responses']:,} responses \u00b7 {k['written']:,} written \u00b7 {k['substantive']:,} substantive "
-          f"\u00b7 {k['improvement']} improvement \u00b7 {k['flags']} flagged")
-    print(f"  {len(acc['sat']):,} of {k['responses']:,} responses carry a rating "
-          f"(average satisfaction {out['avg']['sat']})")
+    matched = [x for x in recs if 'c' in x]
+    agree = sum(1 for x in matched if x['c']['off'] == x['o'])
+    print(f"Wrote {os.path.relpath(OUT, os.path.join(HERE, '..'))}  \u00b7 as of {as_of_label}")
+    print(f"  {len(recs):,} responses \u00b7 {sum(x['w'] for x in recs)} written "
+          f"\u00b7 {sum(x['sb'] for x in recs)} substantive \u00b7 {sum(1 for x in recs if x['i'])} improvement "
+          f"\u00b7 {sum(1 for x in recs if x['f'])} flagged")
     print(f"  {manual_used} responses coded from scripts/survey_manual_coding.json")
-    print(f"  {len(pts)} offices mapped of {len(offices)} \u00b7 as of {as_of_label}")
-    if unmapped:
-        print('  NOT on the map (no coordinate):')
-        for off, n in unmapped:
-            note = ' \u2014 not a country office' if off in NOT_ON_MAP else ' \u2014 ADD IT TO survey_office_coords.json'
-            print(f'    {off} ({n} response{"" if n == 1 else "s"}){note}')
+    print(f"  joined to a request on case number: {len(matched)} of {len(recs)} "
+          f"(country office agrees on {agree} of {len(matched)})")
+    for x in recs:
+        if 'c' not in x:
+            print(f"    NOT joined: response {x['id']} ({x['o']})")
+        elif x['c']['off'] != x['o']:
+            print(f"    office differs: response {x['id']} survey \"{x['o']}\" vs request \"{x['c']['off']}\"")
+    unmapped = [o for o in offices if o not in coords]
+    print(f"  {len(coords)} offices mapped of {len(offices)}")
+    for off in unmapped:
+        n = sum(1 for x in recs if x['o'] == off)
+        note = ' \u2014 not a country office' if off in NOT_ON_MAP else ' \u2014 ADD IT TO survey_office_coords.json'
+        print(f'    {off} ({n} response{"" if n == 1 else "s"}){note}')
 
 
 if __name__ == '__main__':

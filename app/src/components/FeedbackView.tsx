@@ -1,39 +1,16 @@
 import { useMemo, useRef, useState } from 'react';
-import survey from '../data/survey.json';
 import { WORLD_LAND } from '../data/worldLand';
 import { Card } from './Card';
 import { KpiStrip } from './KpiStrip';
 import { SectionHeading } from './SectionHeading';
 import type { KPI } from '../lib/dashboard';
+import { JOINED, RESPONSES, type Feedback, type Quote, type Response } from '../lib/feedback';
 
 /**
- * Feedback: the REACH TA satisfaction survey, reported on its own.
- *
- * The survey identifies requests by a case number (CS…) that does not match the
- * request dataset's identifier (CSR…), so these responses are NOT joined to the
- * request portfolio and this view ignores the filter bar. Everything here is
- * computed by scripts/extract_survey.py; nothing is re-derived at render time.
+ * Feedback: the REACH TA satisfaction survey, joined to the request data by case
+ * number, so the filter bar applies (type, region, country, practice, offer).
+ * All figures come from lib/feedback.ts; this view only lays them out.
  */
-
-interface ThemeRow { label: string; n: number }
-interface PosByType { label: string; Routine: number; 'Big Ticket': number; Unclassified: number }
-interface Quote { t: string; th: string }
-interface MapPoint {
-  o: string; n: number; x: number; y: number;
-  sat: number | null; qual: number | null; time: number | null; r: number;
-  g?: Quote; f?: Quote;
-}
-interface CommentRow { o: string; t: string; x: string; p: string; i: string; f: string; s: number | null }
-
-const S = survey as unknown as {
-  kpi: { responses: number; written: number; substantive: number; improvement: number; flags: number };
-  avg: { sat: number; qual: number; time: number; rec: number };
-  avgN: { sat: number };
-  positive: ThemeRow[]; improvement: ThemeRow[]; flags: ThemeRow[];
-  posByType: PosByType[];
-  map: MapPoint[]; comments: CommentRow[];
-  caseTypeCounts: Record<string, number>; officeTotal: number;
-};
 
 const GREEN = '#2E7D5B';
 const AMBER = '#E0A21E';
@@ -60,6 +37,35 @@ const bandOf = (v: number | null) => {
   return 'n';
 };
 const colorOf = (v: number | null) => BANDS.find((b) => b.id === bandOf(v))!.c;
+
+/** Hand-picked quotes (lightly edited for length), keyed by survey response id. */
+const GOOD_QUOTES: Record<string, string> = {
+  '2': 'Responsive CoE staff who took the time to review the document. We appreciate her support!',
+  '11': "The flexibility from CoE colleagues in adapting to Honduras' specific requirements has been a key factor in meeting the outcomes on time.",
+  '71': 'The commitment of the supporting team led to timely submission of the Digital Learning National Strategy.',
+};
+const FIX_QUOTES: Record<string, string> = {
+  '177': 'Further ensure that the type of expertise offered fits the needs expressed. The request was very focused; the support provided was quite generic.',
+  '155': 'What worked: the sharing of documents, information and resource materials. What can be improved: tailor it a bit more to the country context, as it is a bit generic.',
+  '161': 'Availability of the consultant and experts and strong technical guidance. Area for improvement: language — the experts do not speak French, so they cannot effectively support government partners.',
+};
+
+/** Three quotes for the current filter: the hand-picked ones that are in it, topped up from the data. */
+function pickQuotes(rows: Response[], curated: Record<string, string>, tone: 'good' | 'fix') {
+  const out = rows.filter((r) => curated[r.id]).map((r) => ({ t: curated[r.id], o: r.surveyOffice, c: r.type }));
+  const offices = new Set(out.map((q) => q.o));
+  const pool = rows
+    .filter((r) => !curated[r.id] && r.substantive && !r.flag && r.body.length >= 60 && r.body.length <= 220)
+    .filter((r) => (tone === 'good' ? r.pos.length > 0 && (r.sat ?? 0) >= 4 : !!r.imp && !/^other/i.test(r.imp)))
+    .sort((a, b) => (tone === 'good' ? (b.sat ?? 0) - (a.sat ?? 0) || b.pos.length - a.pos.length : 0) || a.id.localeCompare(b.id));
+  for (const r of pool) {
+    if (out.length >= 3) break;
+    if (offices.has(r.surveyOffice)) continue;
+    offices.add(r.surveyOffice);
+    out.push({ t: r.body, o: r.surveyOffice, c: r.type });
+  }
+  return out.slice(0, 3);
+}
 
 const cardTitle: React.CSSProperties = { fontSize: 13.5, fontWeight: 700 };
 const cardSub: React.CSSProperties = { fontSize: 11.5, color: '#9AA7B2', marginBottom: 16 };
@@ -169,7 +175,21 @@ function RankedBars({ rows, tone, onPick, active }: {
   );
 }
 
-export function FeedbackView() {
+export function FeedbackView({ f }: { f: Feedback }) {
+  if (!f.kpi.responses) {
+    return (
+      <Card style={{ marginTop: 6 }}>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>No survey responses for this selection</div>
+        <div style={{ fontSize: 12.5, color: '#5B7186', marginTop: 6, lineHeight: 1.55 }}>
+          None of the requests matching these filters has been rated yet. Widen the filters, or use Reset filters.
+        </div>
+      </Card>
+    );
+  }
+  return <FeedbackBody S={f} />;
+}
+
+function FeedbackBody({ S }: { S: Feedback }) {
   const [sel, setSel] = useState<{ kind: 'pos' | 'imp' | 'flag'; label: string | null; type?: string } | null>(null);
   const [pick, setPick] = useState<number | null>(null);
   const [band, setBand] = useState<string | null>(null);
@@ -177,14 +197,14 @@ export function FeedbackView() {
 
   const k = S.kpi;
   const kpis: KPI[] = [
-    { label: 'Survey responses', value: fmt(k.responses), sub: `across ${S.officeTotal} country offices`, accent: '#1CABE2', color: '#0F2238' },
+    { label: 'Survey responses', value: fmt(k.responses), sub: `across ${S.officeTotal} country office${S.officeTotal === 1 ? '' : 's'}`, accent: '#1CABE2', color: '#0F2238' },
     { label: 'Written comments', value: fmt(k.written), sub: `${pct(k.written, k.responses)}% of respondents wrote something`, accent: '#0B6FA4', color: '#0F2238' },
     { label: 'Substantive comments', value: fmt(k.substantive), sub: 'excludes “N/A” and non-answers', accent: '#16385C', color: '#0F2238' },
-    { label: 'Improvement opportunities', value: fmt(k.improvement), sub: `${pct(k.improvement, k.written)}% of comments name something to fix`, accent: AMBER, color: '#B77A10' },
+    { label: 'Improvement opportunities', value: fmt(k.improvement), sub: k.written ? `${pct(k.improvement, k.written)}% of comments name something to fix` : 'no written comments', accent: AMBER, color: '#B77A10' },
     { label: 'Data-quality flags', value: fmt(k.flags), sub: 'cancelled, misassigned or unevaluable', accent: '#C0453F', color: '#C0453F' },
   ];
 
-  const mapPts = useMemo(() => [...S.map].sort((a, b) => b.n - a.n), []);
+  const mapPts = S.map;
   const maxN = Math.max(1, ...mapPts.map((p) => p.n));
   const rOf = (n: number) => 3.4 + Math.sqrt(n / maxN) * 13;
   const bandCounts = useMemo(() => {
@@ -202,9 +222,21 @@ export function FeedbackView() {
     const words = ['', '', 'two', 'three', 'four', 'five'];
     return `${words[Math.round(share * d)] ?? Math.round(share * d)} in ${words[d]}`;
   };
-  const praiseShare = inN(posComments / k.written);
-  const noFixShare = inN((k.written - k.improvement) / k.written);
-  const top2Share = Math.round((impTop2 / k.improvement) * 100);
+  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+  const praiseShare = k.written ? inN(posComments / k.written) : '';
+  const noFixShare = k.written ? inN((k.written - k.improvement) / k.written) : '';
+  const top2Share = k.improvement ? Math.round((impTop2 / k.improvement) * 100) : 0;
+  const goodQuotes = pickQuotes(S.rows, GOOD_QUOTES, 'good');
+  const fixQuotes = pickQuotes(S.rows, FIX_QUOTES, 'fix');
+  const typeLine = (['Routine', 'Big Ticket', 'Unclassified'] as const)
+    .filter((t) => S.typeCounts[t])
+    .map((t) => `${S.typeCounts[t]} ${t === 'Unclassified' ? 'not matched to a request' : t}`);
+  const impShare = (t: string) => {
+    const rs = S.rows.filter((r) => r.type === t && r.written);
+    return rs.length >= 5 ? pct(rs.filter((r) => r.imp).length, rs.length) : null;
+  };
+  const routineImp = impShare('Routine');
+  const bigImp = impShare('Big Ticket');
 
   const impRows = useMemo(() => {
     const rows = [...S.improvement].sort((a, b) => {
@@ -213,7 +245,7 @@ export function FeedbackView() {
       return b.n - a.n;
     });
     return rows.map((r, i) => ({ label: r.label, n: r.n, rank: /^other/i.test(r.label) ? '·' : String(i + 1) }));
-  }, []);
+  }, [S.improvement]);
 
   const visible = S.comments.filter((c) => {
     if (!sel) return true;
@@ -248,13 +280,13 @@ export function FeedbackView() {
             <div style={{ fontSize: 12, fontWeight: 700, color: '#0F2238' }}>{c.k}</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 8 }}>
               <span style={{ fontSize: c.big ? 38 : 27, fontWeight: 700, color: c.big ? '#B77A10' : '#0F2238', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                {c.ten ? c.v.toFixed(1) : c.v.toFixed(2)}
+                {c.v == null ? '—' : c.ten ? c.v.toFixed(1) : c.v.toFixed(2)}
               </span>
               <span style={{ fontSize: 12.5, color: '#9AA7B2' }}>{c.of}</span>
             </div>
-            <div style={{ marginTop: 9 }}><Stars value={c.ten ? c.v / 2 : c.v} size={c.big ? 30 : 15} /></div>
+            <div style={{ marginTop: 9 }}><Stars value={c.v == null ? null : c.ten ? c.v / 2 : c.v} size={c.big ? 30 : 15} /></div>
             <div style={{ fontSize: 11.5, color: '#9AA7B2', marginTop: 7 }}>
-              {c.ten ? 'net promoter scale, shown on 5 stars' : `${S.avgN.sat} rated responses`}
+              {c.ten ? 'net promoter scale, shown on 5 stars' : `${S.rated} rated response${S.rated === 1 ? '' : 's'}`}
             </div>
           </div>
         ))}
@@ -263,10 +295,12 @@ export function FeedbackView() {
       {/* 1 — who responded */}
       <SectionHeading n={1} title="Who responded" />
       <div style={intro}>
-        {fmt(k.responses)} responses from {S.officeTotal} country offices &mdash; {S.caseTypeCounts.Routine} Routine,{' '}
-        {S.caseTypeCounts['Big Ticket']} Big Ticket and {S.caseTypeCounts.Unclassified} whose case type could not be
-        matched. Roughly a third of comments in every group raise something to improve, so the picture below holds
-        regardless of case type.
+        {fmt(k.responses)} response{k.responses === 1 ? '' : 's'} from {S.officeTotal} country office{S.officeTotal === 1 ? '' : 's'}
+        {typeLine.length ? <> &mdash; {typeLine.join(', ')}</> : null}.{' '}
+        Each response is matched to the request it rates by case number, so the filters above apply here.
+        {routineImp != null && bigImp != null && (
+          <> {routineImp}% of written comments on Routine requests raise something to improve, against {bigImp}% on Big Ticket.</>
+        )}
       </div>
 
       <Card>
@@ -389,18 +423,16 @@ export function FeedbackView() {
         tone="good"
         big={fmt(posTotal)}
         lead="things colleagues told us we got right"
-        sub={`Across ${k.written} written comments from ${S.officeTotal} country offices. ${praiseShare.charAt(0).toUpperCase() + praiseShare.slice(1)} people who wrote something took the time to name what worked.`}
+        sub={k.written
+          ? `Across ${k.written} written comment${k.written === 1 ? '' : 's'} from ${S.officeTotal} country office${S.officeTotal === 1 ? '' : 's'}. ${cap(praiseShare)} people who wrote something took the time to name what worked.`
+          : 'No written comments for this selection.'}
         stats={[
           { v: fmt(posComments), k: 'colleagues said so' },
-          { v: fmt(S.positive[0].n), k: `praised ${S.positive[0].label.toLowerCase().split(' and ')[0]}` },
-          { v: fmt(S.positive.find((r) => /timeli/i.test(r.label))?.n ?? S.positive[2].n), k: 'called us responsive' },
+          ...(S.positive[0] ? [{ v: fmt(S.positive[0].n), k: `praised ${S.positive[0].label.toLowerCase().split(' and ')[0]}` }] : []),
+          ...(S.positive.some((r) => /timeli/i.test(r.label)) ? [{ v: fmt(S.positive.find((r) => /timeli/i.test(r.label))!.n), k: 'called us responsive' }] : []),
         ]}
       />
-      <Quotes tone="good" items={[
-        { t: 'Responsive CoE staff who took the time to review the document. We appreciate her support!', o: 'Nigeria', c: 'Routine' },
-        { t: "The flexibility from CoE colleagues in adapting to Honduras' specific requirements has been a key factor in meeting the outcomes on time.", o: 'Honduras', c: 'Routine' },
-        { t: 'The commitment of the supporting team led to timely submission of the Digital Learning National Strategy.', o: 'Benin', c: 'Big Ticket' },
-      ]} />
+      {goodQuotes.length > 0 && <Quotes tone="good" items={goodQuotes} />}
       <Card style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
@@ -408,7 +440,7 @@ export function FeedbackView() {
             <div style={{ ...cardSub, marginBottom: 0 }}>one comment can carry several themes &middot; click a segment to read those comments</div>
           </div>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-            {(['Routine', 'Big Ticket', 'Unclassified'] as const).map((t) => (
+            {(['Routine', 'Big Ticket', 'Unclassified'] as const).filter((t) => S.typeCounts[t]).map((t) => (
               <span key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#43586B' }}>
                 <span style={{ width: 11, height: 11, borderRadius: 3, background: TYPE_COLORS[t] }} /> {t}
               </span>
@@ -438,18 +470,19 @@ export function FeedbackView() {
         tone="fix"
         big={fmt(k.improvement)}
         lead="specific things colleagues asked us to change"
-        sub={`${noFixShare.charAt(0).toUpperCase() + noFixShare.slice(1)} written comments raised nothing to fix at all. Of those that did, ${top2Share}% point at the same two things — so a small number of changes would answer a large share of them.`}
-        stats={[
+        sub={!k.written
+          ? 'No written comments for this selection.'
+          : !k.improvement
+            ? 'None of the written comments for this selection raised anything to fix.'
+            : k.improvement < 10
+              ? `${cap(noFixShare)} written comments raised nothing to fix at all. Too few asked for change here to rank the themes with confidence — read them in the table below.`
+              : `${cap(noFixShare)} written comments raised nothing to fix at all. Of those that did, ${top2Share}% point at the same two things — so a small number of changes would answer a large share of them.`}
+        stats={k.improvement >= 10 ? [
           { v: `${top2Share}%`, k: 'come from two themes' },
-          { v: fmt(impRows[0].n), k: 'want earlier engagement' },
-          { v: fmt(impRows[1].n), k: 'want closer expertise matching' },
-        ]}
+          ...impRows.filter((r) => r.rank !== '·').slice(0, 2).map((r) => ({ v: fmt(r.n), k: r.label.toLowerCase() })),
+        ] : []}
       />
-      <Quotes tone="fix" items={[
-        { t: 'Further ensure that the type of expertise offered fits the needs expressed. The request was very focused; the support provided was quite generic.', o: 'Iraq', c: 'Unclassified' },
-        { t: 'What worked: the sharing of documents, information and resource materials. What can be improved: tailor it a bit more to the country context, as it is a bit generic.', o: 'Nepal', c: 'Unclassified' },
-        { t: 'Availability of the consultant and experts and strong technical guidance. Area for improvement: language — the experts do not speak French, so they cannot effectively support government partners.', o: 'Niger', c: 'Unclassified' },
-      ]} />
+      {fixQuotes.length > 0 && <Quotes tone="fix" items={fixQuotes} />}
       <Card style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
@@ -488,11 +521,11 @@ export function FeedbackView() {
           )}
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
             <thead>
               <tr>
-                {['Country office', 'Case type', 'Rating', 'Comment'].map((h, i) => (
-                  <th key={h} style={{ background: '#F6F8FA', borderTop: '1px solid #EDF1F4', borderBottom: '1px solid #EDF1F4', fontSize: 10.5, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7A8C9C', fontWeight: 700, textAlign: 'left', padding: '8px 22px', whiteSpace: 'nowrap', width: [150, 110, 130, undefined][i] }}>{h}</th>
+                {['Country office', 'Case type', 'Practice', 'Rating', 'Comment'].map((h, i) => (
+                  <th key={h} style={{ background: '#F6F8FA', borderTop: '1px solid #EDF1F4', borderBottom: '1px solid #EDF1F4', fontSize: 10.5, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7A8C9C', fontWeight: 700, textAlign: 'left', padding: '8px 22px', whiteSpace: 'nowrap', width: [150, 110, 150, 130, undefined][i] }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -505,6 +538,7 @@ export function FeedbackView() {
                     <td style={{ borderBottom: '1px solid #F1F4F7', padding: '11px 22px', verticalAlign: 'top' }}>
                       <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 5, background: p.bg, color: p.fg, whiteSpace: 'nowrap' }}>{c.t}</span>
                     </td>
+                    <td style={{ borderBottom: '1px solid #F1F4F7', padding: '11px 22px', fontSize: 12, color: '#5B7186', verticalAlign: 'top' }}>{c.pr || '—'}</td>
                     <td style={{ borderBottom: '1px solid #F1F4F7', padding: '11px 22px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                       <Stars value={c.s} size={13} />
                       {c.s != null && <span style={{ fontSize: 12, fontWeight: 700, color: '#B77A10', fontVariantNumeric: 'tabular-nums', marginLeft: 6 }}>{c.s.toFixed(0)}</span>}
@@ -525,7 +559,7 @@ export function FeedbackView() {
                 );
               })}
               {!visible.length && (
-                <tr><td colSpan={4} style={{ padding: '18px 22px', fontSize: 12.5, color: '#9AA7B2' }}>No comments match this selection.</td></tr>
+                <tr><td colSpan={5} style={{ padding: '18px 22px', fontSize: 12.5, color: '#9AA7B2' }}>No comments match this selection.</td></tr>
               )}
             </tbody>
           </table>
@@ -540,6 +574,7 @@ export function FeedbackView() {
       {/* data-quality note */}
       <div style={{ background: '#fff', border: '1px solid #E3E9EF', borderLeft: '3px solid #C0453F', borderRadius: 10, padding: '18px 22px', marginTop: 16 }}>
         <div style={{ ...cardTitle, marginBottom: 4 }}>A note on data</div>
+        {k.flags > 0 && (<>
         <p style={{ margin: '0 0 12px', fontSize: 12.5, color: '#5B7186', lineHeight: 1.6, maxWidth: 760 }}>
           {k.flags} of the {fmt(k.responses)} responses describe requests that were cancelled, misassigned, or that the
           respondent could not evaluate. They are counted separately and excluded from the themes above: reading them as
@@ -558,8 +593,14 @@ export function FeedbackView() {
           onClick={() => { setSel({ kind: 'flag', label: null }); jump(); }}
           style={{ marginTop: 14, border: '1px solid #D5DEE6', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: '6px 13px', borderRadius: 8, color: '#5B7186' }}
         >
-          View these {k.flags} responses in the table above
+          View {k.flags === 1 ? 'this response' : `these ${k.flags} responses`} in the table above
         </button>
+        </>)}
+        <p style={{ margin: k.flags ? '14px 0 0' : 0, fontSize: 12.5, color: '#5B7186', lineHeight: 1.6, maxWidth: 760 }}>
+          Responses are matched to requests on the case number (CS…) the respondent quoted. {JOINED} of the{' '}
+          {RESPONSES.length} responses match; the rest keep the office they reported and count as
+          &ldquo;not matched to a request&rdquo;, so they drop out once a type, practice or programme offer is chosen.
+        </p>
       </div>
     </>
   );

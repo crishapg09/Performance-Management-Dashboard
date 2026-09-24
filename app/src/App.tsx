@@ -6,7 +6,7 @@ import { FilterBar } from './components/FilterBar';
 import { PerformanceView } from './components/PerformanceView';
 import { DataQualityView } from './components/DataQualityView';
 import { FeedbackView } from './components/FeedbackView';
-import survey from './data/survey.json';
+import { computeFeedback, feedbackOptions, feedbackFilterTitle, RESPONSES, SURVEY_AS_OF, SURVEY_OFFICES } from './lib/feedback';
 
 const VIEW_BY_LABEL: Record<string, ViewId> = {
   Performance: 'overview',
@@ -17,6 +17,10 @@ const VIEW_BY_LABEL: Record<string, ViewId> = {
 function App() {
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const d = useMemo(() => computeDashboard(CASES, RAW_CASES, QUARTERS, TODAY, filters), [filters]);
+  const fb = useMemo(() => computeFeedback(filters), [filters]);
+  const fbOpts = useMemo(() => feedbackOptions(filters), [filters]);
+  // the Feedback tab's dropdowns list only values that have survey responses
+  const opts = d.isFeedback ? fbOpts : d;
 
   const onView = (label: string) => setFilters((f) => ({ ...f, view: VIEW_BY_LABEL[label] ?? 'overview' }));
   const setType = (v: string) => setFilters((f) => ({ ...f, type: v }));
@@ -43,25 +47,25 @@ function App() {
       }}
     >
       <Header metaTotal={d.metaTotal} isQuality={d.isQuality} isFeedback={d.isFeedback}
-        surveyN={survey.kpi.responses} surveyOffices={survey.officeTotal} surveyAsOf={survey.asOf} coFrom={d.coFrom} coUnassigned={d.coUnassigned} coverage={d.coverage} />
+        surveyN={RESPONSES.length} surveyOffices={SURVEY_OFFICES} surveyAsOf={SURVEY_AS_OF} coFrom={d.coFrom} coUnassigned={d.coUnassigned} coverage={d.coverage} />
 
       <FilterBar
-        tabsOnly={d.isFeedback}
+        requestFiltersOnly={d.isFeedback}
         viewTabs={d.viewTabs}
         onView={onView}
         typeBtns={d.typeBtns}
         onType={setType}
         practice={filters.practice}
-        practiceOpts={d.practiceOpts}
+        practiceOpts={opts.practiceOpts}
         onPractice={onPractice}
         region={filters.regions[0] || 'All'}
-        regionOpts={d.regionOpts}
+        regionOpts={opts.regionOpts}
         onRegion={onRegion}
         office={filters.office}
-        officeOpts={d.officeOpts}
+        officeOpts={opts.officeOpts}
         onOffice={onOffice}
         programmeOffer={filters.programmeOffer}
-        offerOpts={d.offerOpts}
+        offerOpts={opts.offerOpts}
         onProgrammeOffer={onProgrammeOffer}
         statusChips={d.statusChips}
         onToggleStatus={onToggleStatus}
@@ -81,11 +85,19 @@ function App() {
           </div>
         </div>
         )}
-        {d.isFeedback && <div style={{ padding: '20px 2px 0' }} />}
+        {d.isFeedback && (
+        <div style={{ padding: '20px 2px 4px' }}>
+          <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', color: '#0F2238' }}>{feedbackFilterTitle(filters)}</div>
+          <div style={{ fontSize: 13, color: '#5B7186', marginTop: 5 }}>
+            Showing <span style={{ fontWeight: 700, color: '#0F2238' }}>{fb.kpi.responses}</span> survey responses{' '}
+            <span style={{ color: '#9AA7B2' }}>({Math.round((fb.kpi.responses / RESPONSES.length) * 100)}% of all)</span>
+          </div>
+        </div>
+        )}
 
         {d.isOverview && <PerformanceView d={d} />}
         {d.isQuality && <DataQualityView d={d} />}
-        {d.isFeedback && <FeedbackView />}
+        {d.isFeedback && <FeedbackView key={feedbackFilterTitle(filters)} f={fb} />}
       </div>
     </div>
   );
