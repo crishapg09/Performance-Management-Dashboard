@@ -41,11 +41,20 @@ const RAW = survey as unknown as { asOf: string; responses: RawResponse[]; coord
 
 export const SURVEY_AS_OF = RAW.asOf;
 
+/**
+ * Offices outside the country reference (data/regionMap) that the survey does
+ * reach: shown with a readable name and filed under HQ rather than "Unmapped".
+ */
+const HQ_OFFICES: Record<string, string> = {
+  'Office of Strat & Eviden(OSE)': 'Office of Strategy and Evidence (OSE)',
+};
+
 export const RESPONSES: Response[] = RAW.responses.map((r) => {
-  const place = mapOffice(r.c ? r.c.off : r.o);
+  const raw = r.c ? r.c.off : r.o;
+  const place = HQ_OFFICES[raw] ? { office: HQ_OFFICES[raw], region: 'HQ' } : mapOffice(raw);
   return {
     id: r.id,
-    surveyOffice: r.o,
+    surveyOffice: HQ_OFFICES[r.o] ?? r.o,
     type: r.c ? mapType(r.c.type) || 'Unclassified' : 'Unclassified',
     region: place.region,
     office: place.office,
