@@ -223,7 +223,7 @@ function FeedbackBody({ S }: { S: Feedback }) {
     return `${words[Math.round(share * d)] ?? Math.round(share * d)} in ${words[d]}`;
   };
   const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
-  const praiseShare = k.written ? inN(posComments / k.written) : '';
+  const positiveShare = k.written ? inN(posComments / k.written) : '';
   const noFixShare = k.written ? inN((k.written - k.improvement) / k.written) : '';
   const top2Share = k.improvement ? Math.round((impTop2 / k.improvement) * 100) : 0;
   const goodQuotes = pickQuotes(S.rows, GOOD_QUOTES, 'good');
@@ -422,21 +422,21 @@ function FeedbackBody({ S }: { S: Feedback }) {
       <HeroBand
         tone="good"
         big={fmt(posTotal)}
-        lead="things colleagues told us we got right"
+        lead="pieces of positive feedback"
         sub={k.written
-          ? `Across ${k.written} written comment${k.written === 1 ? '' : 's'} from ${S.officeTotal} country office${S.officeTotal === 1 ? '' : 's'}. ${cap(praiseShare)} people who wrote something took the time to name what worked.`
+          ? `Across ${k.written} written comment${k.written === 1 ? '' : 's'} from ${S.officeTotal} country office${S.officeTotal === 1 ? '' : 's'}. ${cap(positiveShare)} people who wrote something took the time to name what worked.`
           : 'No written comments for this selection.'}
         stats={[
-          { v: fmt(posComments), k: 'colleagues said so' },
-          ...(S.positive[0] ? [{ v: fmt(S.positive[0].n), k: `praised ${S.positive[0].label.toLowerCase().split(' and ')[0]}` }] : []),
-          ...(S.positive.some((r) => /timeli/i.test(r.label)) ? [{ v: fmt(S.positive.find((r) => /timeli/i.test(r.label))!.n), k: 'called us responsive' }] : []),
+          { v: fmt(posComments), k: `comment${posComments === 1 ? '' : 's'} with positive feedback` },
+          ...(S.positive[0] ? [{ v: fmt(S.positive[0].n), k: `on ${S.positive[0].label.toLowerCase().split(' and ')[0]}` }] : []),
+          ...(S.positive.some((r) => /timeli/i.test(r.label)) ? [{ v: fmt(S.positive.find((r) => /timeli/i.test(r.label))!.n), k: 'on timeliness' }] : []),
         ]}
       />
       {goodQuotes.length > 0 && <Quotes tone="good" items={goodQuotes} />}
       <Card style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <div style={cardTitle}>What they praised, by case type</div>
+            <div style={cardTitle}>Positive feedback, by case type</div>
             <div style={{ ...cardSub, marginBottom: 0 }}>one comment can carry several themes &middot; click a segment to read those comments</div>
           </div>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
