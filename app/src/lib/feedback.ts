@@ -84,21 +84,38 @@ export function feedbackFilterTitle(s: FilterState): string {
   return parts.join('  ·  ');
 }
 
-const opts = (rows: Response[], key: 'region' | 'office' | 'practice' | 'programmeOffer'): SelectOption[] => {
+type Facet = 'region' | 'office' | 'practice' | 'programmeOffer';
+
+/**
+ * Options for one dropdown, counted over the responses that match every OTHER
+ * active filter. Each list therefore offers only values that still return
+ * responses, so no combination of dropdowns can land on an empty tab. The
+ * current choice is always kept, so the select never shows blank.
+ */
+const opts = (s: FilterState, key: Facet, current: string): SelectOption[] => {
+  const others: FilterState = {
+    ...s,
+    ...(key === 'region' ? { regions: [] } : {}),
+    ...(key === 'office' ? { office: 'All' } : {}),
+    ...(key === 'practice' ? { practice: 'All' } : {}),
+    ...(key === 'programmeOffer' ? { programmeOffer: 'All' } : {}),
+  };
   const n = new Map<string, number>();
-  rows.forEach((r) => { if (r[key]) n.set(r[key], (n.get(r[key]) ?? 0) + 1); });
+  RESPONSES.filter((r) => matchesFeedback(r, others))
+    .forEach((r) => { if (r[key]) n.set(r[key], (n.get(r[key]) ?? 0) + 1); });
+  if (current !== 'All' && !n.has(current)) n.set(current, 0);
   return [...n.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([v, c]) => ({ value: v, label: `${v} (${c})` }));
 };
 
-/** Dropdown options counted in responses, so no option leads to an empty tab. */
+/** Dropdown options counted in responses, each narrowed by the other filters. */
 export function feedbackOptions(s: FilterState) {
   return {
-    regionOpts: opts(RESPONSES, 'region'),
-    practiceOpts: opts(RESPONSES, 'practice'),
-    offerOpts: opts(RESPONSES, 'programmeOffer'),
-    officeOpts: opts(s.regions.length ? RESPONSES.filter((r) => s.regions.includes(r.region)) : RESPONSES, 'office'),
+    regionOpts: opts(s, 'region', s.regions[0] ?? 'All'),
+    practiceOpts: opts(s, 'practice', s.practice),
+    offerOpts: opts(s, 'programmeOffer', s.programmeOffer),
+    officeOpts: opts(s, 'office', s.office),
   };
 }
 
