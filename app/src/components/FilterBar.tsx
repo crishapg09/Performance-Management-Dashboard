@@ -19,6 +19,10 @@ const selectStyle: React.CSSProperties = {
   borderRadius: 8,
   padding: '8px 30px 8px 12px',
   cursor: 'pointer',
+  // fixed widths (set per select) keep the row from reflowing when the option
+  // labels change length; long choices are clipped in the closed control
+  maxWidth: '100%',
+  textOverflow: 'ellipsis',
 };
 
 interface FilterBarProps {
@@ -152,7 +156,7 @@ export function FilterBar({
             <select
               value={practice}
               onChange={(e: ChangeEvent<HTMLSelectElement>) => onPractice(e.target.value)}
-              style={{ ...selectStyle, minWidth: 200 }}
+              style={{ ...selectStyle, width: 235 }}
             >
               <option value="All">All practices</option>
               {practiceOpts.map((p) => (
@@ -169,7 +173,7 @@ export function FilterBar({
             <select
               value={region}
               onChange={(e: ChangeEvent<HTMLSelectElement>) => onRegion(e.target.value)}
-              style={{ ...selectStyle, minWidth: 160 }}
+              style={{ ...selectStyle, width: 160 }}
             >
               <option value="All">All regions</option>
               {regionOpts.map((r) => (
@@ -186,7 +190,7 @@ export function FilterBar({
             <select
               value={office}
               onChange={(e: ChangeEvent<HTMLSelectElement>) => onOffice(e.target.value)}
-              style={{ ...selectStyle, minWidth: 180 }}
+              style={{ ...selectStyle, width: 200 }}
             >
               <option value="All">All countries</option>
               {officeOpts.map((o) => (
@@ -203,7 +207,7 @@ export function FilterBar({
             <select
               value={programmeOffer}
               onChange={(e: ChangeEvent<HTMLSelectElement>) => onProgrammeOffer(e.target.value)}
-              style={{ ...selectStyle, minWidth: 210 }}
+              style={{ ...selectStyle, width: 326 }}
             >
               <option value="All">All programme offers</option>
               {offerOpts.map((o) => (
