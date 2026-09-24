@@ -196,6 +196,15 @@ export function FeedbackView() {
   const posTotal = S.positive.reduce((s, r) => s + r.n, 0);
   const posComments = S.comments.filter((c) => c.p).length;
   const impTop2 = S.improvement.filter((r) => !/^other/i.test(r.label)).slice(0, 2).reduce((s, r) => s + r.n, 0);
+  // plain-language shares, derived so a data refresh cannot leave a stale claim
+  const inN = (share: number) => {
+    const d = [2, 3, 4, 5].reduce((b, x) => (Math.abs(share - Math.round(share * x) / x) < Math.abs(share - Math.round(share * b) / b) ? x : b), 2);
+    const words = ['', '', 'two', 'three', 'four', 'five'];
+    return `${words[Math.round(share * d)] ?? Math.round(share * d)} in ${words[d]}`;
+  };
+  const praiseShare = inN(posComments / k.written);
+  const noFixShare = inN((k.written - k.improvement) / k.written);
+  const top2Share = Math.round((impTop2 / k.improvement) * 100);
 
   const impRows = useMemo(() => {
     const rows = [...S.improvement].sort((a, b) => {
@@ -380,11 +389,11 @@ export function FeedbackView() {
         tone="good"
         big={fmt(posTotal)}
         lead="things colleagues told us we got right"
-        sub={`Across ${k.written} written comments from ${S.officeTotal} country offices. Three in four people who wrote something took the time to name what worked.`}
+        sub={`Across ${k.written} written comments from ${S.officeTotal} country offices. ${praiseShare.charAt(0).toUpperCase() + praiseShare.slice(1)} people who wrote something took the time to name what worked.`}
         stats={[
           { v: fmt(posComments), k: 'colleagues said so' },
           { v: fmt(S.positive[0].n), k: `praised ${S.positive[0].label.toLowerCase().split(' and ')[0]}` },
-          { v: fmt(S.positive[2].n), k: 'called us responsive' },
+          { v: fmt(S.positive.find((r) => /timeli/i.test(r.label))?.n ?? S.positive[2].n), k: 'called us responsive' },
         ]}
       />
       <Quotes tone="good" items={[
@@ -429,9 +438,9 @@ export function FeedbackView() {
         tone="fix"
         big={fmt(k.improvement)}
         lead="specific things colleagues asked us to change"
-        sub="Seven in ten written comments raised nothing to fix at all. Of those that did, nearly half point at the same two things — so a small number of changes would answer most of them."
+        sub={`${noFixShare.charAt(0).toUpperCase() + noFixShare.slice(1)} written comments raised nothing to fix at all. Of those that did, ${top2Share}% point at the same two things — so a small number of changes would answer a large share of them.`}
         stats={[
-          { v: `${pct(impTop2, k.improvement)}%`, k: 'come from two themes' },
+          { v: `${top2Share}%`, k: 'come from two themes' },
           { v: fmt(impRows[0].n), k: 'want earlier engagement' },
           { v: fmt(impRows[1].n), k: 'want closer expertise matching' },
         ]}

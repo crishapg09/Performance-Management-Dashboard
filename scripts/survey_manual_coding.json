@@ -1,0 +1,46 @@
+{
+ "_readme": [
+  "Theme coding for the 28 responses that arrived after the original qualitative coding pass",
+  "(the rows whose 'In Comment Data' is not 'Yes' in REACH_TA_Survey_Analysis_FINAL.xlsx).",
+  "",
+  "Coded by hand against the rules in that workbook's Methodology tab, reusing its existing",
+  "vocabulary rather than inventing new themes. Conventions taken from the original coder:",
+  "  - a data-quality flag is EXCLUSIVE: a flagged row carries no positive or improvement theme;",
+  "  - 'written' is any non-blank comment; 'substantive' excludes blanks, 'no comments' and bare",
+  "    punctuation;",
+  "  - positive themes are multi-label, improvement is a single primary theme, assigned only where",
+  "    the respondent makes a concrete suggestion or names a limitation.",
+  "",
+  "Keyed by the survey response ID. Anything absent here keeps the workbook's own coding."
+ ],
+
+ "195": {"pos": ["Technical expertise and quality", "Programme impact and usefulness"]},
+ "208": {"pos": ["Technical expertise and quality", "Timeliness and responsiveness", "Programme impact and usefulness"]},
+ "209": {"flag": "Unable to evaluate assistance",
+         "_why": "respondent cannot identify which request is being rated - matches the precedent 'Not clear in respect of what assistance was provided'"},
+ "193": {"pos": ["Collaboration and communication", "Tailoring and flexibility", "Timeliness and responsiveness"]},
+ "192": {"pos": ["Tailoring and flexibility", "Timeliness and responsiveness"]},
+ "204": {"pos": ["Collaboration and communication", "Programme impact and usefulness", "Timeliness and responsiveness"],
+         "imp": "Other improvement",
+         "_why": "asks for a community of practice and cross-country examples; no existing theme covers cross-country learning as an improvement"},
+ "191": {"pos": ["Technical expertise and quality"], "imp": "Earlier and faster engagement"},
+ "210": {"imp": "Clearer service guidance",
+         "_why": "a procedural action logged as a technical request; not flagged, because the precedent for 'Misassigned request' is a request sent to the wrong country"},
+ "211": {"pos": ["Collaboration and communication", "Timeliness and responsiveness", "Programme impact and usefulness"]},
+ "206": {"imp": "Expertise matching and tailoring"},
+ "190": {"pos": ["Timeliness and responsiveness", "Tailoring and flexibility"]},
+ "212": {"pos": ["Technical expertise and quality", "Global and regional learning"]},
+ "203": {"imp": "Other improvement"},
+ "207": {"pos": ["Technical expertise and quality", "Timeliness and responsiveness"]},
+
+ "196": {"pos": ["Timeliness and responsiveness", "Programme impact and usefulness"], "imp": "Clearer service guidance"},
+ "197": {"pos": ["Timeliness and responsiveness", "Programme impact and usefulness"], "imp": "Clearer service guidance"},
+ "198": {"pos": ["Timeliness and responsiveness", "Programme impact and usefulness"], "imp": "Clearer service guidance"},
+ "199": {"pos": ["Timeliness and responsiveness", "Programme impact and usefulness"], "imp": "Clearer service guidance"},
+ "200": {"pos": ["Timeliness and responsiveness", "Programme impact and usefulness"], "imp": "Clearer service guidance"},
+ "202": {"pos": ["Timeliness and responsiveness", "Programme impact and usefulness"], "imp": "Clearer service guidance"},
+ "201": {"pos": ["Programme impact and usefulness"], "imp": "Clearer service guidance",
+         "_why": "same MENARO text as the others but drops the word 'timely', and rates timeliness 'Too late' - so no timeliness theme"},
+
+ "188": {}, "189": {}, "194": {}, "205": {}, "213": {}, "214": {}, "215": {}
+}

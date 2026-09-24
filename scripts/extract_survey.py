@@ -41,11 +41,28 @@ OUT = os.path.join(HERE, '..', 'app', 'src', 'data', 'survey.json')
 COORDS = json.loads(open(os.path.join(HERE, 'survey_office_coords.json'), encoding='utf-8').read())
 NOT_ON_MAP = {'Office of Strat & Eviden(OSE)'}
 
+MANUAL = {k: v for k, v in json.loads(
+    open(os.path.join(HERE, 'survey_manual_coding.json'), encoding='utf-8').read()).items()
+    if not k.startswith('_')}
+
+# Rating labels -> 1-5, as used by the survey's own scoring.
+SCALES = {
+    'Satisfaction': {'Very dissatisfied': 1, 'Dissatisfied': 2,
+                     'Neither satisfied nor dissatisfied': 3, 'Satisfied': 4, 'Very satisfied': 5},
+    'Quality': {'Poor': 1, 'Fair': 2, 'Good': 3, 'Very Good': 4, 'Excellent': 5},
+    'Timeliness': {'Much too late': 1, 'Too late': 2, 'Acceptable': 3, 'Timely': 4, 'Very Timely': 5},
+    'Contribution': {'No Contribution': 1, 'Limited Contribution': 2, 'Moderate Contribution': 3,
+                     'Significant Contribution': 4, 'Very Significant Contribution': 5},
+}
+# a non-answer in the open-text field: written, but not substantive
+NON_SUBSTANTIVE = {'', 'n/a', 'na', 'no comment', 'no comments', 'none', 'nil', '.', '-', '..', '...'}
+
 TYPE = {'Regular': 'Routine', 'Big Ticket Item': 'Big Ticket'}
 BANDS = [(4.5, 'a'), (4.0, 'b'), (3.5, 'c'), (0.0, 'd')]
 
 
 def load(path, sheet):
+    """Rows of `sheet`, finding the header beneath the sheet's title block."""
     import openpyxl
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     if sheet not in wb.sheetnames:
@@ -55,15 +72,35 @@ def load(path, sheet):
     ws.reset_dimensions()
     rows = list(ws.iter_rows(values_only=True))
     wb.close()
-    header = list(rows[0])
-    return {h: i for i, h in enumerate(header)}, [r for r in rows[1:] if r[0] not in (None, '')]
+    hi = next((i for i, r in enumerate(rows)
+               if r and sum(1 for c in r if c not in (None, '')) > 4), 0)
+    header = [str(h).strip() if h is not None else '' for h in rows[hi]]
+    data = [r for r in rows[hi + 1:] if any(c not in (None, '') for c in r)]
+    return {h: i for i, h in enumerate(header)}, data
+
+
+def score(row, idx, col):
+    """A rating label mapped to 1-5; None when unscored (e.g. 'Too early to say')."""
+    return SCALES[col].get(txt(row, idx, col))
+
+
+def coded(row, idx):
+    """Themes for a response: the workbook's own, or our coding for later arrivals."""
+    manual = MANUAL.get(txt(row, idx, 'ID'))
+    if manual is None:
+        return (txt(row, idx, 'Positive Themes'),
+                txt(row, idx, 'Improvement Theme'),
+                txt(row, idx, 'Data-quality Flag'), False)
+    return ('; '.join(manual.get('pos', [])), manual.get('imp', ''),
+            manual.get('flag', ''), True)
 
 
 def txt(row, idx, col):
-    if col not in idx:
+    """Cell as trimmed text; '' when absent — short rows are ragged in these exports."""
+    i = idx.get(col)
+    if i is None or i >= len(row) or row[i] is None:
         return ''
-    v = row[idx[col]]
-    return '' if v is None else ' '.join(str(v).split())
+    return ' '.join(str(row[i]).split())
 
 
 def num(row, idx, col):
@@ -92,71 +129,72 @@ def main():
         raise SystemExit(__doc__.strip())
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     opts = [a for a in sys.argv[1:] if a.startswith('--')]
-    qual_path = args[0]
-    rate_path = args[1] if len(args) > 1 else None
-    as_of = None
-    for o in opts:
-        if o.startswith('--as-of='):
-            as_of = o.split('=', 1)[1]
+    path = args[0]
+    as_of = next((o.split('=', 1)[1] for o in opts if o.startswith('--as-of=')), None)
     import datetime
     d = datetime.datetime.strptime(as_of, '%Y-%m-%d') if as_of else datetime.datetime.now()
     as_of_label = d.strftime('%-d %b %Y')
 
-    qi, qrows = load(qual_path, 'Comment Data')
-    for col in ('ID', 'Country Office', 'Case Type', 'Open Comment',
-                'Written Comment', 'Substantive Comment', 'Positive Themes',
-                'Improvement Theme', 'Data-quality Flag'):
-        if col not in qi:
-            raise SystemExit(f'ERROR: "Comment Data" is missing the column "{col}".')
-
-    scores = {}
-    if rate_path:
-        ri, rrows = load(rate_path, 'Cleaned Data')
-        for r in rrows:
-            scores[txt(r, ri, 'ID')] = {
-                'sat': num(r, ri, 'Satisfaction Score'),
-                'qual': num(r, ri, 'Quality Score'),
-                'time': num(r, ri, 'Timeliness Score'),
-                'rec': num(r, ri, 'Recommendation (0-10)'),
-            }
+    idx, rows = load(path, 'Merged data')
+    # The merge blanks some open-text answers (every one of them "N/A"), so the
+    # raw sheet is the authority on what was written. The Methodology tab counts
+    # any non-blank answer as written, and excludes N/A-style answers only from
+    # "substantive" — taking the text from here keeps both counts faithful.
+    ridx, rrows = load(path, 'Response data')
+    raw = {txt(r, ridx, 'ID'): txt(r, ridx, 'Open comment') for r in rrows}
+    for col in ('ID', 'Country Office', 'Case Type', 'Open comment',
+                'Satisfaction', 'Quality', 'Timeliness', 'Contribution', 'Recommend 0\u201310'):
+        if col not in idx:
+            raise SystemExit(f'ERROR: "Merged data" is missing the column "{col}". '
+                             f'Found: {", ".join(k for k in idx if k)}')
 
     out = {}
+    manual_used = 0
+    recs = []
+    for r in rows:
+        body = raw.get(txt(r, idx, 'ID')) or txt(r, idx, 'Open comment')
+        written = bool(body)
+        substantive = written and body.strip().lower().rstrip('.!?') not in NON_SUBSTANTIVE
+        pos, imp, flag, was_manual = coded(r, idx)
+        if was_manual:
+            manual_used += 1
+        try:
+            rec_score = float(txt(r, idx, 'Recommend 0\u201310'))
+        except ValueError:
+            rec_score = None
+        recs.append({
+            'id': txt(r, idx, 'ID'),
+            'office': txt(r, idx, 'Country Office'),
+            'type': TYPE.get(txt(r, idx, 'Case Type'), txt(r, idx, 'Case Type')) or 'Unclassified',
+            'body': body, 'written': written, 'substantive': substantive,
+            'pos': pos, 'imp': imp, 'flag': flag,
+            'sat': score(r, idx, 'Satisfaction'), 'qual': score(r, idx, 'Quality'),
+            'time': score(r, idx, 'Timeliness'), 'contrib': score(r, idx, 'Contribution'),
+            'rec': rec_score,
+        })
 
-    # ---- headline counts -------------------------------------------------
     out['kpi'] = {
-        'responses': len(qrows),
-        'written': sum(1 for r in qrows if txt(r, qi, 'Written Comment') == 'Yes'),
-        'substantive': sum(1 for r in qrows if txt(r, qi, 'Substantive Comment') == 'Yes'),
-        'improvement': sum(1 for r in qrows if txt(r, qi, 'Improvement Theme')),
-        'flags': sum(1 for r in qrows if txt(r, qi, 'Data-quality Flag')),
+        'responses': len(recs),
+        'written': sum(1 for x in recs if x['written']),
+        'substantive': sum(1 for x in recs if x['substantive']),
+        'improvement': sum(1 for x in recs if x['imp']),
+        'flags': sum(1 for x in recs if x['flag']),
     }
 
-    # ---- averages, over the responses that carry a rating ----------------
-    acc = {'sat': [], 'qual': [], 'time': [], 'rec': []}
-    for r in qrows:
-        s = scores.get(txt(r, qi, 'ID'))
-        if s:
-            for k in acc:
-                if s[k] is not None:
-                    acc[k].append(s[k])
+    acc = {k: [x[k] for x in recs if x[k] is not None] for k in ('sat', 'qual', 'time', 'rec', 'contrib')}
     out['avg'] = {k: mean(v) for k, v in acc.items()}
     out['avgN'] = {k: len(v) for k, v in acc.items()}
 
-    # ---- themes ----------------------------------------------------------
-    pos, imp, flag = {}, {}, {}
-    pos_by_type = {}
-    for r in qrows:
-        ct = TYPE.get(txt(r, qi, 'Case Type'), txt(r, qi, 'Case Type')) or 'Unclassified'
-        for th in [t.strip() for t in txt(r, qi, 'Positive Themes').split(';') if t.strip()]:
+    pos, imp, flag, pos_by_type = {}, {}, {}, {}
+    for x in recs:
+        for th in [t.strip() for t in x['pos'].split(';') if t.strip()]:
             pos[th] = pos.get(th, 0) + 1
             pos_by_type.setdefault(th, {'Routine': 0, 'Big Ticket': 0, 'Unclassified': 0})
-            pos_by_type[th][ct] = pos_by_type[th].get(ct, 0) + 1
-        if txt(r, qi, 'Improvement Theme'):
-            k = txt(r, qi, 'Improvement Theme')
-            imp[k] = imp.get(k, 0) + 1
-        if txt(r, qi, 'Data-quality Flag'):
-            k = txt(r, qi, 'Data-quality Flag')
-            flag[k] = flag.get(k, 0) + 1
+            pos_by_type[th][x['type']] = pos_by_type[th].get(x['type'], 0) + 1
+        if x['imp']:
+            imp[x['imp']] = imp.get(x['imp'], 0) + 1
+        if x['flag']:
+            flag[x['flag']] = flag.get(x['flag'], 0) + 1
 
     srt = lambda d: sorted(d.items(), key=lambda kv: -kv[1])
     out['positive'] = [{'label': k, 'n': v} for k, v in srt(pos)]
@@ -164,30 +202,23 @@ def main():
     out['flags'] = [{'label': k, 'n': v} for k, v in srt(flag)]
     out['posByType'] = [dict({'label': k}, **pos_by_type[k]) for k, _ in srt(pos)]
 
-    # ---- per-office rollup, for the map ----------------------------------
     offices = {}
-    for r in qrows:
-        off = txt(r, qi, 'Country Office')
-        if not off:
+    for x in recs:
+        if not x['office']:
             continue
-        e = offices.setdefault(off, {'n': 0, 'sat': [], 'qual': [], 'time': [],
-                                     'good': [], 'fix': []})
+        e = offices.setdefault(x['office'], {'n': 0, 'sat': [], 'qual': [], 'time': [],
+                                             'good': [], 'fix': []})
         e['n'] += 1
-        s = scores.get(txt(r, qi, 'ID'))
-        if s:
-            for k in ('sat', 'qual', 'time'):
-                if s[k] is not None:
-                    e[k].append(s[k])
-        body = txt(r, qi, 'Open Comment')
-        if txt(r, qi, 'Substantive Comment') == 'Yes' and len(body) >= 35:
-            rating = s['sat'] if s else None
-            if txt(r, qi, 'Positive Themes'):
-                e['good'].append((body, rating, txt(r, qi, 'Positive Themes').split(';')[0].strip()))
-            if txt(r, qi, 'Improvement Theme'):
-                e['fix'].append((body, rating, txt(r, qi, 'Improvement Theme')))
+        for k in ('sat', 'qual', 'time'):
+            if x[k] is not None:
+                e[k].append(x[k])
+        if x['substantive'] and len(x['body']) >= 35:
+            if x['pos']:
+                e['good'].append((x['body'], x['sat'], x['pos'].split(';')[0].strip()))
+            if x['imp']:
+                e['fix'].append((x['body'], x['sat'], x['imp']))
 
-    unmapped = []
-    pts = []
+    unmapped, pts = [], []
     for off, e in sorted(offices.items(), key=lambda kv: -kv[1]['n']):
         if off in NOT_ON_MAP or off not in COORDS:
             unmapped.append((off, e['n']))
@@ -199,39 +230,21 @@ def main():
              'sat': mean(e['sat']), 'qual': mean(e['qual']), 'time': mean(e['time']),
              'r': len(e['sat'])}
         if e['good']:
-            # the best-rated comment, and among equals the most quotable
-            t, _, th = sorted(e['good'], key=lambda x: (-(x[1] or 0), len(x[0])))[0]
+            t, _, th = sorted(e['good'], key=lambda z: (-(z[1] or 0), len(z[0])))[0]
             p['g'] = {'t': clip(t), 'th': th}
         if e['fix']:
-            # the most quotable, rather than the longest
-            t, _, th = sorted(e['fix'], key=lambda x: abs(len(x[0]) - 150))[0]
+            t, _, th = sorted(e['fix'], key=lambda z: abs(len(z[0]) - 150))[0]
             p['f'] = {'t': clip(t), 'th': th}
         pts.append(p)
     out['map'] = pts
 
-    # ---- every substantive comment, for the table ------------------------
-    out['comments'] = []
-    for r in qrows:
-        if txt(r, qi, 'Substantive Comment') != 'Yes':
-            continue
-        body = txt(r, qi, 'Open Comment')
-        if not body:
-            continue
-        s = scores.get(txt(r, qi, 'ID'))
-        out['comments'].append({
-            'o': txt(r, qi, 'Country Office'),
-            't': TYPE.get(txt(r, qi, 'Case Type'), txt(r, qi, 'Case Type')) or 'Unclassified',
-            'x': body,
-            'p': txt(r, qi, 'Positive Themes'),
-            'i': txt(r, qi, 'Improvement Theme'),
-            'f': txt(r, qi, 'Data-quality Flag'),
-            's': s['sat'] if s else None,
-        })
+    out['comments'] = [{'o': x['office'], 't': x['type'], 'x': x['body'], 'p': x['pos'],
+                        'i': x['imp'], 'f': x['flag'], 's': x['sat']}
+                       for x in recs if x['substantive']]
 
     counts = {}
-    for r in qrows:
-        ct = TYPE.get(txt(r, qi, 'Case Type'), txt(r, qi, 'Case Type')) or 'Unclassified'
-        counts[ct] = counts.get(ct, 0) + 1
+    for x in recs:
+        counts[x['type']] = counts.get(x['type'], 0) + 1
     out['asOf'] = as_of_label
     out['caseTypeCounts'] = counts
     out['officeTotal'] = len(offices)
@@ -241,16 +254,16 @@ def main():
 
     k = out['kpi']
     print(f"Wrote {os.path.relpath(OUT, os.path.join(HERE, '..'))}")
-    print(f"  {k['responses']:,} responses · {k['written']:,} written · {k['substantive']:,} substantive "
-          f"· {k['improvement']} improvement · {k['flags']} flagged")
+    print(f"  {k['responses']:,} responses \u00b7 {k['written']:,} written \u00b7 {k['substantive']:,} substantive "
+          f"\u00b7 {k['improvement']} improvement \u00b7 {k['flags']} flagged")
     print(f"  {len(acc['sat']):,} of {k['responses']:,} responses carry a rating "
           f"(average satisfaction {out['avg']['sat']})")
-    print(f"  {len(pts)} offices mapped of {len(offices)}")
-    print(f"  as of {as_of_label}")
+    print(f"  {manual_used} responses coded from scripts/survey_manual_coding.json")
+    print(f"  {len(pts)} offices mapped of {len(offices)} \u00b7 as of {as_of_label}")
     if unmapped:
         print('  NOT on the map (no coordinate):')
         for off, n in unmapped:
-            note = ' — not a country office' if off in NOT_ON_MAP else ' — ADD IT TO survey_office_coords.json'
+            note = ' \u2014 not a country office' if off in NOT_ON_MAP else ' \u2014 ADD IT TO survey_office_coords.json'
             print(f'    {off} ({n} response{"" if n == 1 else "s"}){note}')
 
 
