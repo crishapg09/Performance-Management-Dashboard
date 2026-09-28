@@ -4,7 +4,7 @@ import { Card } from './Card';
 import { KpiStrip } from './KpiStrip';
 import { SectionHeading } from './SectionHeading';
 import type { KPI } from '../lib/dashboard';
-import { JOINED, RESPONSES, type Feedback, type Quote, type Response } from '../lib/feedback';
+import { CORRECTED, JOINED, RESPONSES, type Feedback, type Quote, type Response } from '../lib/feedback';
 
 /**
  * Feedback: the REACH TA satisfaction survey, joined to the request data by case
@@ -601,6 +601,13 @@ function FeedbackBody({ S }: { S: Feedback }) {
           {RESPONSES.length} responses match; the rest keep the office they reported and count as
           &ldquo;not matched to a request&rdquo;, so they drop out once a type, practice or programme offer is chosen.
         </p>
+        {CORRECTED > 0 && (
+          <p style={{ margin: '10px 0 0', fontSize: 12.5, color: '#5B7186', lineHeight: 1.6, maxWidth: 760 }}>
+            {CORRECTED} respondents answered &ldquo;Very dissatisfied&rdquo; while rating quality, timeliness and
+            recommendation highly and writing positive comments. On review, the REACH team confirmed these were
+            the wrong end of the scale, and their satisfaction answers have been corrected.
+          </p>
+        )}
       </div>
     </>
   );

@@ -49,6 +49,11 @@ MANUAL = {k: v for k, v in json.loads(
     open(os.path.join(HERE, 'survey_manual_coding.json'), encoding='utf-8').read()).items()
     if not k.startswith('_')}
 
+# Satisfaction answers corrected at the REACH team's request (see the file's _readme).
+CORRECTIONS = {k: v for k, v in json.loads(
+    open(os.path.join(HERE, 'survey_corrections.json'), encoding='utf-8').read()).items()
+    if not k.startswith('_')}
+
 # Rating labels -> 1-5, as used by the survey's own scoring.
 SCALES = {
     'Satisfaction': {'Very dissatisfied': 1, 'Dissatisfied': 2,
@@ -105,7 +110,14 @@ def load_cases(path):
 
 def score(row, idx, col):
     """A rating label mapped to 1-5; None when unscored (e.g. 'Too early to say')."""
-    return SCALES[col].get(txt(row, idx, col))
+    label = txt(row, idx, col)
+    fix = CORRECTIONS.get(txt(row, idx, 'TA Case Number')) if col == 'Satisfaction' else None
+    if fix and label != fix['to']:
+        if label != fix['from']:
+            raise SystemExit(f"ERROR: survey_corrections.json expects {txt(row, idx, 'TA Case Number')} "
+                             f"to read \"{fix['from']}\", but the workbook has \"{label}\". Review the correction.")
+        label = fix['to']
+    return SCALES[col].get(label)
 
 
 def coded(row, idx):
@@ -190,7 +202,7 @@ def main():
         lon, lat = COORDS[off]
         coords[off] = [round((lon + 180) / 360 * 1000, 1), round((90 - lat) / 180 * 500, 1)]
 
-    out = {'asOf': as_of_label, 'responses': recs, 'coords': coords}
+    out = {'asOf': as_of_label, 'responses': recs, 'coords': coords, 'corrected': len(CORRECTIONS)}
     with open(OUT, 'w', encoding='utf-8') as fh:
         json.dump(out, fh, ensure_ascii=False, separators=(',', ':'))
 
@@ -201,6 +213,7 @@ def main():
           f"\u00b7 {sum(x['sb'] for x in recs)} substantive \u00b7 {sum(1 for x in recs if x['i'])} improvement "
           f"\u00b7 {sum(1 for x in recs if x['f'])} flagged")
     print(f"  {manual_used} responses coded from scripts/survey_manual_coding.json")
+    print(f"  {len(CORRECTIONS)} satisfaction answers corrected from scripts/survey_corrections.json")
     print(f"  joined to a request on case number: {len(matched)} of {len(recs)} "
           f"(country office agrees on {agree} of {len(matched)})")
     for x in recs:

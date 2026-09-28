@@ -1,0 +1,17 @@
+{
+ "_readme": [
+  "Corrections to the Satisfaction answer, confirmed by the REACH team on 28 Sep 2026.",
+  "Each respondent picked the wrong end of the scale: all six rated quality, timeliness and",
+  "recommendation highly and wrote positive or neutral comments, but answered 'Very dissatisfied'.",
+  "",
+  "Keyed by TA Case Number. 'from' is the value in the source workbook and must match, so a",
+  "later export that changes the row is flagged rather than silently overwritten; a row that",
+  "already reads 'to' is left alone."
+ ],
+ "CS0004507": {"from": "Very dissatisfied", "to": "Very satisfied", "_request": "Support setting up a Sandbox for IoGT software enhancements with external vendor"},
+ "CS0005881": {"from": "Very dissatisfied", "to": "Very satisfied", "_request": "Develop RapidPro fact sheet for Government of Tanzania"},
+ "CS0002644": {"from": "Very dissatisfied", "to": "Satisfied", "_request": "Request to reinstate the Learning Passport (LP) platform in Mozambique"},
+ "CS0006672": {"from": "Very dissatisfied", "to": "Very satisfied", "_request": "MHM support for Liberia"},
+ "CS0003911": {"from": "Very dissatisfied", "to": "Satisfied", "_request": "Co-facilitate training for CO section chiefs on gender-integrated preparedness and response"},
+ "CS0002386": {"from": "Very dissatisfied", "to": "Very satisfied", "_request": "Support to Bolivia's inclusion of social protection in FRLD proposal"}
+}

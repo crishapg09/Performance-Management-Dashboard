@@ -37,9 +37,11 @@ export interface Response {
   sat: number | null; qual: number | null; time: number | null; contrib: number | null; rec: number | null;
 }
 
-const RAW = survey as unknown as { asOf: string; responses: RawResponse[]; coords: Record<string, [number, number]> };
+const RAW = survey as unknown as { asOf: string; responses: RawResponse[]; coords: Record<string, [number, number]>; corrected: number };
 
 export const SURVEY_AS_OF = RAW.asOf;
+/** satisfaction answers corrected at the REACH team's request (scripts/survey_corrections.json) */
+export const CORRECTED = RAW.corrected;
 
 /**
  * Offices outside the country reference (data/regionMap) that the survey does
