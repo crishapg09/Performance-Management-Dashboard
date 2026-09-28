@@ -196,12 +196,25 @@ function FeedbackBody({ S }: { S: Feedback }) {
   const tableRef = useRef<HTMLDivElement>(null);
 
   const k = S.kpi;
+  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+  // flag wording follows the flags actually present, so removing a case cannot leave a stale claim
+  const FLAG_WORDS: Record<string, [string, string]> = {
+    'Cancelled or no longer needed': ['cancelled', 'were cancelled'],
+    'Misassigned request': ['misassigned', 'were assigned to the wrong office'],
+    'Unable to evaluate assistance': ['unevaluable', 'the respondent could not evaluate'],
+  };
+  const flagParts = S.flags.map((f) => FLAG_WORDS[f.label] ?? [f.label.toLowerCase(), f.label.toLowerCase()]);
+  const orList = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`);
+  const flagWords = orList(flagParts.map((x) => x[0]));
+  // "requests that were cancelled or that the respondent could not evaluate"
+  const flagClause = flagParts.map((x) => x[1]).map((x, i) => (i && !x.startsWith('were') ? `that ${x}` : x))
+    .reduce((acc, x, i, all) => (i === 0 ? x : `${acc}${i === all.length - 1 ? ' or ' : ', '}${x}`), '');
   const kpis: KPI[] = [
     { label: 'Survey responses', value: fmt(k.responses), sub: `across ${S.officeTotal} country office${S.officeTotal === 1 ? '' : 's'}`, accent: '#1CABE2', color: '#0F2238' },
     { label: 'Written comments', value: fmt(k.written), sub: `${pct(k.written, k.responses)}% of respondents wrote something`, accent: '#0B6FA4', color: '#0F2238' },
     { label: 'Substantive comments', value: fmt(k.substantive), sub: 'excludes “N/A” and non-answers', accent: '#16385C', color: '#0F2238' },
     { label: 'Improvement opportunities', value: fmt(k.improvement), sub: k.written ? `${pct(k.improvement, k.written)}% of comments name something to fix` : 'no written comments', accent: AMBER, color: '#B77A10' },
-    { label: 'Data-quality flags', value: fmt(k.flags), sub: 'cancelled, misassigned or unevaluable', accent: '#C0453F', color: '#C0453F' },
+    { label: 'Data-quality flags', value: fmt(k.flags), sub: flagWords ? cap(flagWords) : 'none for this selection', accent: '#C0453F', color: '#C0453F' },
   ];
 
   const mapPts = S.map;
@@ -222,7 +235,6 @@ function FeedbackBody({ S }: { S: Feedback }) {
     const words = ['', '', 'two', 'three', 'four', 'five'];
     return `${words[Math.round(share * d)] ?? Math.round(share * d)} in ${words[d]}`;
   };
-  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
   const positiveShare = k.written ? inN(posComments / k.written) : '';
   const noFixShare = k.written ? inN((k.written - k.improvement) / k.written) : '';
   const top2Share = k.improvement ? Math.round((impTop2 / k.improvement) * 100) : 0;
@@ -576,8 +588,7 @@ function FeedbackBody({ S }: { S: Feedback }) {
         <div style={{ ...cardTitle, marginBottom: 4 }}>A note on data</div>
         {k.flags > 0 && (<>
         <p style={{ margin: '0 0 12px', fontSize: 12.5, color: '#5B7186', lineHeight: 1.6, maxWidth: 760 }}>
-          {k.flags} of the {fmt(k.responses)} responses describe requests that were cancelled, misassigned, or that the
-          respondent could not evaluate. They are counted separately and excluded from the themes above: reading them as
+          {k.flags} of the {fmt(k.responses)} responses describe requests that {flagClause}. They are counted separately and excluded from the themes above: reading them as
           dissatisfaction would understate the service, and they belong in the data-quality workstream rather than in
           service feedback.
         </p>

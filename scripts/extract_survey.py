@@ -50,9 +50,9 @@ MANUAL = {k: v for k, v in json.loads(
     if not k.startswith('_')}
 
 # Satisfaction answers corrected at the REACH team's request (see the file's _readme).
-CORRECTIONS = {k: v for k, v in json.loads(
-    open(os.path.join(HERE, 'survey_corrections.json'), encoding='utf-8').read()).items()
-    if not k.startswith('_')}
+_FIXES = json.loads(open(os.path.join(HERE, 'survey_corrections.json'), encoding='utf-8').read())
+CORRECTIONS = _FIXES.get('satisfaction', {})
+EXCLUDE = _FIXES.get('exclude', {})
 
 # Rating labels -> 1-5, as used by the survey's own scoring.
 SCALES = {
@@ -169,7 +169,15 @@ def main():
 
     manual_used = 0
     recs = []
+    excluded = []
     for r in rows:
+        drop = EXCLUDE.get(txt(r, idx, 'ID'))
+        if drop:
+            if txt(r, idx, 'Country Office') != drop['office']:
+                raise SystemExit(f"ERROR: survey_corrections.json excludes response {txt(r, idx, 'ID')} as "
+                                 f"{drop['office']}, but the workbook has \"{txt(r, idx, 'Country Office')}\". Review it.")
+            excluded.append(txt(r, idx, 'ID'))
+            continue
         body = raw.get(txt(r, idx, 'ID')) or txt(r, idx, 'Open comment')
         written = bool(body)
         substantive = written and body.strip().lower().rstrip('.!?') not in NON_SUBSTANTIVE
@@ -214,6 +222,7 @@ def main():
           f"\u00b7 {sum(1 for x in recs if x['f'])} flagged")
     print(f"  {manual_used} responses coded from scripts/survey_manual_coding.json")
     print(f"  {len(CORRECTIONS)} satisfaction answers corrected from scripts/survey_corrections.json")
+    print(f"  {len(excluded)} response(s) excluded by scripts/survey_corrections.json: {', '.join(excluded) or 'none'}")
     print(f"  joined to a request on case number: {len(matched)} of {len(recs)} "
           f"(country office agrees on {agree} of {len(matched)})")
     for x in recs:
