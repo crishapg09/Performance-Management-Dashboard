@@ -202,7 +202,7 @@ def main():
         lon, lat = COORDS[off]
         coords[off] = [round((lon + 180) / 360 * 1000, 1), round((90 - lat) / 180 * 500, 1)]
 
-    out = {'asOf': as_of_label, 'responses': recs, 'coords': coords, 'corrected': len(CORRECTIONS)}
+    out = {'asOf': as_of_label, 'responses': recs, 'coords': coords}
     with open(OUT, 'w', encoding='utf-8') as fh:
         json.dump(out, fh, ensure_ascii=False, separators=(',', ':'))
 
