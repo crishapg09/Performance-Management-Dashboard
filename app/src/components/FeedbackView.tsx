@@ -190,7 +190,7 @@ export function FeedbackView({ f }: { f: Feedback }) {
 }
 
 function FeedbackBody({ S }: { S: Feedback }) {
-  const [sel, setSel] = useState<{ kind: 'pos' | 'imp' | 'flag'; label: string | null; type?: string } | null>(null);
+  const [sel, setSel] = useState<{ kind: 'pos' | 'imp' | 'flag' | 'office'; label: string | null; type?: string } | null>(null);
   const [pick, setPick] = useState<number | null>(null);
   const [band, setBand] = useState<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -266,12 +266,21 @@ function FeedbackBody({ S }: { S: Feedback }) {
       return has && (!sel.type || c.t === sel.type);
     }
     if (sel.kind === 'imp') return c.i === sel.label;
+    if (sel.kind === 'office') return c.o === sel.label;
     return sel.label == null ? !!c.f : c.f === sel.label;
   });
 
+  // a bubble opens its panel and narrows the comment table to that office
+  const pickOffice = (i: number) => {
+    const off = pick === i ? null : mapPts[i].o;
+    setPick(off == null ? null : i);
+    setSel((s) => (off ? { kind: 'office', label: off } : s?.kind === 'office' ? null : s));
+  };
+  const officeComments = (o: string) => S.comments.filter((c) => c.o === o).length;
   const jump = () => tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const pickTheme = (kind: 'pos' | 'imp', label: string, type?: string) => {
     setSel((s) => (s && s.kind === kind && s.label === label && s.type === type ? null : { kind, label, type }));
+    setPick(null);
     jump();
   };
   const selected = pick != null ? mapPts[pick] : null;
@@ -320,7 +329,7 @@ function FeedbackBody({ S }: { S: Feedback }) {
           <div>
             <div style={cardTitle}>Where responses came from</div>
             <div style={{ ...cardSub, marginBottom: 0 }}>
-              {mapPts.length} country offices &middot; size is the number of responses, colour is the average rating &middot; click a bubble to read its feedback
+              {mapPts.length} country offices &middot; size is the number of responses, colour is the average rating &middot; click a bubble to read these comments
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -329,7 +338,7 @@ function FeedbackBody({ S }: { S: Feedback }) {
               return (
                 <button
                   key={b.id}
-                  onClick={() => { setBand(on ? null : b.id); if (!on && selected && bandOf(selected.sat) !== b.id) setPick(null); }}
+                  onClick={() => { setBand(on ? null : b.id); if (!on && selected && bandOf(selected.sat) !== b.id) { setPick(null); setSel((x) => (x?.kind === 'office' ? null : x)); } }}
                   aria-pressed={on}
                   title={`Show only offices rated ${b.l}`}
                   style={{ border: `1px solid ${on ? '#0F2238' : 'transparent'}`, background: on ? '#0F2238' : 'transparent', borderRadius: 7, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, color: on ? '#fff' : '#43586B', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: band && !on ? .45 : 1 }}
@@ -370,10 +379,12 @@ function FeedbackBody({ S }: { S: Feedback }) {
                     vectorEffect="non-scaling-stroke"
                     tabIndex={0} role="button"
                     aria-label={`${p.o}, ${p.n} response${p.n === 1 ? '' : 's'}${p.sat == null ? ', no rating yet' : `, average ${p.sat} out of 5`}. Select to read its feedback.`}
-                    onClick={() => setPick(on ? null : i)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPick(on ? null : i); } }}
+                    onClick={() => pickOffice(i)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickOffice(i); } }}
                     style={{ cursor: 'pointer', opacity: pick != null && !on ? .3 : 1, transition: 'opacity .15s' }}
-                  />
+                  >
+                    <title>{`${p.o} · ${p.n} response${p.n === 1 ? '' : 's'}${p.sat == null ? '' : ` · ${p.sat.toFixed(2)} / 5`} — click to read these comments`}</title>
+                  </circle>
                 );
               })}
             </g>
@@ -423,6 +434,16 @@ function FeedbackBody({ S }: { S: Feedback }) {
                       </div>
                     );
                   })}
+                {officeComments(selected.o) > 0 ? (
+                  <button
+                    onClick={jump}
+                    style={{ marginTop: 'auto', border: '1px solid #D5DEE6', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: '8px 13px', borderRadius: 8, color: '#0B5A8A', textAlign: 'left' }}
+                  >
+                    Read {officeComments(selected.o) === 1 ? 'this comment' : `all ${officeComments(selected.o)} comments`} from {selected.o} &darr;
+                  </button>
+                ) : (
+                  <div style={{ marginTop: 'auto', fontSize: 11.5, color: '#9AA7B2', fontStyle: 'italic' }}>No written comments from this office.</div>
+                )}
               </>
             )}
           </aside>
@@ -523,11 +544,11 @@ function FeedbackBody({ S }: { S: Feedback }) {
       <div ref={tableRef} style={{ background: '#fff', border: '1px solid #E3E9EF', borderRadius: 10, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 22px 10px', flexWrap: 'wrap' }}>
           <div style={cardTitle}>
-            {!sel ? 'All substantive comments' : sel.label == null ? 'Flagged for data quality' : `${sel.label}${sel.type ? ' — ' + sel.type : ''}`}
+            {!sel ? 'All substantive comments' : sel.label == null ? 'Flagged for data quality' : sel.kind === 'office' ? `Comments from ${sel.label}` : `${sel.label}${sel.type ? ' — ' + sel.type : ''}`}
             <span style={{ color: '#C0453F' }}> ({fmt(visible.length)})</span>
           </div>
           {sel && (
-            <button onClick={() => setSel(null)} style={{ border: '1px solid #D5DEE6', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: '6px 13px', borderRadius: 8, color: '#5B7186' }}>
+            <button onClick={() => { setSel(null); setPick(null); }} style={{ border: '1px solid #D5DEE6', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: '6px 13px', borderRadius: 8, color: '#5B7186' }}>
               × Clear selection
             </button>
           )}
@@ -601,7 +622,7 @@ function FeedbackBody({ S }: { S: Feedback }) {
           ))}
         </div>
         <button
-          onClick={() => { setSel({ kind: 'flag', label: null }); jump(); }}
+          onClick={() => { setSel({ kind: 'flag', label: null }); setPick(null); jump(); }}
           style={{ marginTop: 14, border: '1px solid #D5DEE6', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: '6px 13px', borderRadius: 8, color: '#5B7186' }}
         >
           View {k.flags === 1 ? 'this response' : `these ${k.flags} responses`} in the table above
