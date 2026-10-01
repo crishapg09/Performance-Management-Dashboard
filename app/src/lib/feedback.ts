@@ -50,7 +50,8 @@ const HQ_OFFICES: Record<string, string> = {
 };
 
 export const RESPONSES: Response[] = RAW.responses.map((r) => {
-  const raw = r.c ? r.c.off : r.o;
+  // the request's office, or the one the respondent reported when ServiceNow has it blank
+  const raw = r.c?.off || r.o;
   const place = HQ_OFFICES[raw] ? { office: HQ_OFFICES[raw], region: 'HQ' } : mapOffice(raw);
   return {
     id: r.id,
