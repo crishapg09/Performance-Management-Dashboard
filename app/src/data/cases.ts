@@ -8,7 +8,7 @@ import { mapPractice } from '../lib/practiceMap';
 import { mapType } from '../lib/typeMap';
 
 /**
- * Source: UNICEF TA case export, Jan–Jul 2026 (5,118 rows, as of 1 Oct 2026).
+ * Source: UNICEF TA case export, Jan–Jul 2026 (5,123 rows, as of 2 Oct 2026).
  * Dates are Excel serial day numbers (matches the source export).
  * Each record's office and region are corrected via the Regions & Countries
  * reference (see lib/regionMap), its practice normalised (see lib/practiceMap,
