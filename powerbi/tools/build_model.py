@@ -123,7 +123,7 @@ SHARED = [
                    'fnMapOffices', 'fnMapOffer', 'fnMapPractice', 'fnMapType', 'fnSurveySheet']),
     ('Lookups', ['RegionReference', 'OfficeLookup', 'OfferLookup', 'HqOffices', 'ExcludedResolutions',
                  'ManualCoding', 'SatisfactionCorrections', 'ExcludedResponses', 'OfficeCoords', 'FeaturedQuotes']),
-    ('Source', ['FieldMap', 'RawRequestsApi', 'RawRequestsAll', 'AsOf', 'ApiSample', 'FieldFinder']),
+    ('Source', ['FieldMap', 'RawRequestsApi', 'RawRequestsAll', 'AsOf', 'SurveyRaw', 'ApiSample', 'FieldFinder']),
 ]
 
 # --------------------------------------------------------------------------- tables
@@ -206,32 +206,82 @@ TABLES['SurveyThemes'] = dict(query='SurveyThemes', desc='One row per theme a re
     col('Response ID'), col('Kind'), col('Theme'), col('Theme is other', I, hidden=True),
 ])
 
-TABLES['DimType'] = dict(query='DimType', desc='Request types, for the slicer.', columns=[col('Request type')])
-TABLES['DimPractice'] = dict(query='DimPractice', desc='Global practices, for the slicer.', columns=[col('Practice')])
-TABLES['DimOffer'] = dict(query='DimOffer', desc='Programme offers, for the slicer.', columns=[col('Programme offer')])
-TABLES['DimOffice'] = dict(query='DimOffice', desc='Country offices and their region, for the slicers.', columns=[
-    col('Office'), col('Region')])
-TABLES['DimMonth'] = dict(query='DimMonth', desc='Months from April 2026 to the as-of month.', columns=[
+# Slicer lists and the month axis are DAX calculated tables, built from the loaded
+# Requests and Survey tables. As Power Query tables they each re-downloaded every
+# case from ServiceNow; as calculated tables they cost nothing at refresh.
+TABLES['Request types'] = dict(dax='''VAR t =
+    DISTINCT (
+        UNION (
+            DISTINCT ( SELECTCOLUMNS ( Requests, "Request type", Requests[Request type] ) ),
+            DISTINCT ( SELECTCOLUMNS ( Survey, "Request type", Survey[Request type] ) )
+        )
+    )
+RETURN
+    FILTER ( t, NOT ISBLANK ( [Request type] ) )''', desc='Request types, for the slicer ("Unclassified" = a response not matched to a request).',
+    columns=[col('Request type')])
+TABLES['Practices'] = dict(dax='''VAR t =
+    DISTINCT (
+        UNION (
+            DISTINCT ( SELECTCOLUMNS ( Requests, "Practice", Requests[Practice] ) ),
+            DISTINCT ( SELECTCOLUMNS ( Survey, "Practice", Survey[Practice] ) )
+        )
+    )
+RETURN
+    FILTER ( t, NOT ISBLANK ( [Practice] ) )''', desc='Global practices, for the slicer.', columns=[col('Practice')])
+TABLES['Programme offers'] = dict(dax='''VAR t =
+    DISTINCT (
+        UNION (
+            DISTINCT ( SELECTCOLUMNS ( Requests, "Programme offer", Requests[Programme offer] ) ),
+            DISTINCT ( SELECTCOLUMNS ( Survey, "Programme offer", Survey[Programme offer] ) )
+        )
+    )
+RETURN
+    FILTER ( t, NOT ISBLANK ( [Programme offer] ) )''', desc='Programme offers (canonical names), for the slicer.', columns=[col('Programme offer')])
+TABLES['Offices'] = dict(dax='''VAR t =
+    DISTINCT (
+        UNION (
+            DISTINCT ( SELECTCOLUMNS ( Requests, "Office", Requests[Office], "Region", Requests[Region] ) ),
+            DISTINCT ( SELECTCOLUMNS ( Survey, "Office", Survey[Office], "Region", Survey[Region] ) )
+        )
+    )
+RETURN
+    FILTER ( t, NOT ISBLANK ( [Office] ) )''', desc='Country offices and their region: drives both the Region and the Country office slicers.',
+    columns=[col('Office'), col('Region')])
+TABLES['Months'] = dict(dax='''VAR asOf = MAX ( 'Data date'[As of] )
+VAR startMonth = DATE ( 2026, 4, 1 )
+VAR endMonth = MAX ( startMonth, DATE ( YEAR ( asOf ), MONTH ( asOf ), 1 ) )
+VAR monthStarts = FILTER ( CALENDAR ( startMonth, endMonth ), DAY ( [Date] ) = 1 )
+RETURN
+    SELECTCOLUMNS (
+        monthStarts,
+        "Month", [Date],
+        "Month label", FORMAT ( [Date], "mmm yyyy" ),
+        "Month order", YEAR ( [Date] ) * 100 + MONTH ( [Date] )
+    )''', desc='Months from April 2026 (when the REACH import landed) to the as-of month.', columns=[
     col('Month', DATE, fmt='mmm yyyy', hidden=True), col('Month label', sort='Month order'), col('Month order', I, hidden=True)])
 TABLES['Portfolio metric'] = dict(query='PortfolioMetric', desc='Pick a metric to re-break the practice chart.', columns=[
     col('Metric', sort='Metric order'), col('Metric order', I, hidden=True), col('Description')])
 TABLES['Completeness check'] = dict(query='CompletenessCheck', desc='Fields checked on started requests.', columns=[
     col('Field', sort='Field order'), col('Field order', I, hidden=True)])
-TABLES['Data date'] = dict(query='DataDate', desc='The as-of date and the refresh time.', columns=[
-    col('As of', DATE, fmt='d mmm yyyy'), col('Refreshed', DT, fmt='d mmm yyyy hh:nn')])
+TABLES['Data date'] = dict(dax='''VAR stamp =
+    MAXX ( Requests, MAX ( MAX ( Requests[Created], Requests[Opened] ), Requests[Updated] ) )
+RETURN
+    ROW ( "As of", DATE ( YEAR ( stamp ), MONTH ( stamp ), DAY ( stamp ) ), "Refreshed", NOW () )''',
+    desc='The as-of date every figure is measured from (the day of the latest activity in Requests), and the refresh time.',
+    columns=[col('As of', DATE, fmt='d mmm yyyy'), col('Refreshed', DT, fmt='d mmm yyyy hh:nn')])
 
 RELATIONSHIPS = [
     # (from table, from col, to table, to col, extra)
-    ('Requests', 'Request type', 'DimType', 'Request type', {}),
-    ('Requests', 'Practice', 'DimPractice', 'Practice', {}),
-    ('Requests', 'Programme offer', 'DimOffer', 'Programme offer', {}),
-    ('Requests', 'Office', 'DimOffice', 'Office', {}),
-    ('Requests', 'Opened month', 'DimMonth', 'Month', {}),
-    ('Requests', 'Completed month', 'DimMonth', 'Month', {'isActive': 'false'}),
-    ('Survey', 'Request type', 'DimType', 'Request type', {}),
-    ('Survey', 'Practice', 'DimPractice', 'Practice', {}),
-    ('Survey', 'Programme offer', 'DimOffer', 'Programme offer', {}),
-    ('Survey', 'Office', 'DimOffice', 'Office', {}),
+    ('Requests', 'Request type', 'Request types', 'Request type', {}),
+    ('Requests', 'Practice', 'Practices', 'Practice', {}),
+    ('Requests', 'Programme offer', 'Programme offers', 'Programme offer', {}),
+    ('Requests', 'Office', 'Offices', 'Office', {}),
+    ('Requests', 'Opened month', 'Months', 'Month', {}),
+    ('Requests', 'Completed month', 'Months', 'Month', {'isActive': 'false'}),
+    ('Survey', 'Request type', 'Request types', 'Request type', {}),
+    ('Survey', 'Practice', 'Practices', 'Practice', {}),
+    ('Survey', 'Programme offer', 'Programme offers', 'Programme offer', {}),
+    ('Survey', 'Office', 'Offices', 'Office', {}),
     # both ways, so picking a theme narrows the responses (comments table, map)
     ('SurveyThemes', 'Response ID', 'Survey', 'Response ID', {'crossFilteringBehavior': 'bothDirections'}),
 ]
@@ -346,6 +396,8 @@ def write_model():
                 lines.append(description(c['desc'], 1).rstrip('\n'))
             lines.append(f'\tcolumn {q(c["name"])}')
             lines.append(f'\t\tdataType: {c["dtype"]}')
+            if 'dax' in t:
+                lines.append('\t\tisNameInferred')
             if c['fmt']:
                 lines.append(f'\t\tformatString: {c["fmt"]}')
             elif c['dtype'] == 'int64':
@@ -355,15 +407,21 @@ def write_model():
             if c['cat']:
                 lines.append(f'\t\tdataCategory: {c["cat"]}')
             lines.append(f'\t\tsummarizeBy: {c["summarize"]}')
-            lines.append(f'\t\tsourceColumn: {c["name"]}')
+            lines.append(f'\t\tsourceColumn: {"[" + c["name"] + "]" if "dax" in t else c["name"]}')
             if c['sort']:
                 lines.append(f'\t\tsortByColumn: {q(c["sort"])}')
             lines.append('')
-        src = m_source(t['query'], literals)
-        lines.append(f'\tpartition {q(tname)} = m')
-        lines.append('\t\tmode: import')
-        lines.append('\t\tsource =')
-        lines.append(indent(src, 4))
+        if 'dax' in t:
+            lines.append(f'\tpartition {q(tname)} = calculated')
+            lines.append('\t\tmode: import')
+            lines.append('\t\tsource =')
+            lines.append(indent(t['dax'], 4))
+        else:
+            src = m_source(t['query'], literals)
+            lines.append(f'\tpartition {q(tname)} = m')
+            lines.append('\t\tmode: import')
+            lines.append('\t\tsource =')
+            lines.append(indent(src, 4))
         lines.append('')
         text = '\n'.join(l for l in lines if l is not None)
         fname = tname + '.tmdl'
@@ -383,7 +441,7 @@ def write_model():
 
     # every query, for the syntax check
     allm = {n: m_source(n, literals) for _, names in SHARED for n in names}
-    allm.update({t['query']: m_source(t['query'], literals) for t in TABLES.values()})
+    allm.update({t['query']: m_source(t['query'], literals) for t in TABLES.values() if 'query' in t})
     return allm
 
 

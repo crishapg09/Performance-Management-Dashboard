@@ -1,0 +1,21 @@
+/// Request types, for the slicer ("Unclassified" = a response not matched to a request).
+table 'Request types'
+
+	column 'Request type'
+		dataType: string
+		isNameInferred
+		summarizeBy: none
+		sourceColumn: [Request type]
+
+	partition 'Request types' = calculated
+		mode: import
+		source =
+				VAR t =
+				    DISTINCT (
+				        UNION (
+				            DISTINCT ( SELECTCOLUMNS ( Requests, "Request type", Requests[Request type] ) ),
+				            DISTINCT ( SELECTCOLUMNS ( Survey, "Request type", Survey[Request type] ) )
+				        )
+				    )
+				RETURN
+				    FILTER ( t, NOT ISBLANK ( [Request type] ) )

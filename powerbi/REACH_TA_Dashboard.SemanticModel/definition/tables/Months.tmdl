@@ -1,0 +1,40 @@
+/// Months from April 2026 (when the REACH import landed) to the as-of month.
+table Months
+
+	column Month
+		dataType: dateTime
+		isNameInferred
+		formatString: mmm yyyy
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Month]
+
+	column 'Month label'
+		dataType: string
+		isNameInferred
+		summarizeBy: none
+		sourceColumn: [Month label]
+		sortByColumn: 'Month order'
+
+	column 'Month order'
+		dataType: int64
+		isNameInferred
+		formatString: 0
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Month order]
+
+	partition Months = calculated
+		mode: import
+		source =
+				VAR asOf = MAX ( 'Data date'[As of] )
+				VAR startMonth = DATE ( 2026, 4, 1 )
+				VAR endMonth = MAX ( startMonth, DATE ( YEAR ( asOf ), MONTH ( asOf ), 1 ) )
+				VAR monthStarts = FILTER ( CALENDAR ( startMonth, endMonth ), DAY ( [Date] ) = 1 )
+				RETURN
+				    SELECTCOLUMNS (
+				        monthStarts,
+				        "Month", [Date],
+				        "Month label", FORMAT ( [Date], "mmm yyyy" ),
+				        "Month order", YEAR ( [Date] ) * 100 + MONTH ( [Date] )
+				    )

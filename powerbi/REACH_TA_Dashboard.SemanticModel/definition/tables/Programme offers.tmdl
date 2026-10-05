@@ -1,0 +1,21 @@
+/// Programme offers (canonical names), for the slicer.
+table 'Programme offers'
+
+	column 'Programme offer'
+		dataType: string
+		isNameInferred
+		summarizeBy: none
+		sourceColumn: [Programme offer]
+
+	partition 'Programme offers' = calculated
+		mode: import
+		source =
+				VAR t =
+				    DISTINCT (
+				        UNION (
+				            DISTINCT ( SELECTCOLUMNS ( Requests, "Programme offer", Requests[Programme offer] ) ),
+				            DISTINCT ( SELECTCOLUMNS ( Survey, "Programme offer", Survey[Programme offer] ) )
+				        )
+				    )
+				RETURN
+				    FILTER ( t, NOT ISBLANK ( [Programme offer] ) )

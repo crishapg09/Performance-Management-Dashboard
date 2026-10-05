@@ -25,11 +25,11 @@ annotation __PBI_TimeIntelligenceEnabled = 0
 ref table Requests
 ref table Survey
 ref table SurveyThemes
-ref table DimType
-ref table DimPractice
-ref table DimOffer
-ref table DimOffice
-ref table DimMonth
+ref table 'Request types'
+ref table Practices
+ref table 'Programme offers'
+ref table Offices
+ref table Months
 ref table 'Portfolio metric'
 ref table 'Completeness check'
 ref table 'Data date'

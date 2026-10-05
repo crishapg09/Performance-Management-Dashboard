@@ -1,0 +1,27 @@
+/// Country offices and their region: drives both the Region and the Country office slicers.
+table Offices
+
+	column Office
+		dataType: string
+		isNameInferred
+		summarizeBy: none
+		sourceColumn: [Office]
+
+	column Region
+		dataType: string
+		isNameInferred
+		summarizeBy: none
+		sourceColumn: [Region]
+
+	partition Offices = calculated
+		mode: import
+		source =
+				VAR t =
+				    DISTINCT (
+				        UNION (
+				            DISTINCT ( SELECTCOLUMNS ( Requests, "Office", Requests[Office], "Region", Requests[Region] ) ),
+				            DISTINCT ( SELECTCOLUMNS ( Survey, "Office", Survey[Office], "Region", Survey[Region] ) )
+				        )
+				    )
+				RETURN
+				    FILTER ( t, NOT ISBLANK ( [Office] ) )

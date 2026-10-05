@@ -5,7 +5,7 @@ table Requests
 			VAR scopeRows =
 			    CALCULATETABLE (
 			        Requests,
-			        REMOVEFILTERS ( DimType ), REMOVEFILTERS ( DimPractice ), REMOVEFILTERS ( DimOffer ), REMOVEFILTERS ( DimOffice ),
+			        REMOVEFILTERS ( 'Request types' ), REMOVEFILTERS ( Practices ), REMOVEFILTERS ( 'Programme offers' ), REMOVEFILTERS ( Offices ),
 			        REMOVEFILTERS ( Requests[Status] ), REMOVEFILTERS ( Requests[Expected completion quarter] )
 			    )
 			VAR lo = MINX ( scopeRows, Requests[Opened month] )
@@ -29,10 +29,10 @@ table Requests
 	measure 'All requests in scope' =
 			CALCULATE (
 			    [Total requests],
-			    REMOVEFILTERS ( DimType ),
-			    REMOVEFILTERS ( DimPractice ),
-			    REMOVEFILTERS ( DimOffer ),
-			    REMOVEFILTERS ( DimOffice ),
+			    REMOVEFILTERS ( 'Request types' ),
+			    REMOVEFILTERS ( Practices ),
+			    REMOVEFILTERS ( 'Programme offers' ),
+			    REMOVEFILTERS ( Offices ),
 			    REMOVEFILTERS ( Requests[Status] ),
 			    REMOVEFILTERS ( Requests[Expected completion quarter] )
 			)
@@ -194,14 +194,14 @@ table Requests
 	measure 'Completed in month' =
 			CALCULATE (
 			    COUNTROWS ( Requests ),
-			    USERELATIONSHIP ( Requests[Completed month], DimMonth[Month] )
+			    USERELATIONSHIP ( Requests[Completed month], Months[Month] )
 			)
 		formatString: #,0
 		displayFolder: Performance
 
 	measure 'Opened vs completed note' =
-			"Opened " & FORMAT ( SUMX ( DimMonth, [Opened in month] ) + 0, "#,0" )
-			    & "  ·  Completed " & FORMAT ( SUMX ( DimMonth, [Completed in month] ) + 0, "#,0" )
+			"Opened " & FORMAT ( SUMX ( Months, [Opened in month] ) + 0, "#,0" )
+			    & "  ·  Completed " & FORMAT ( SUMX ( Months, [Completed in month] ) + 0, "#,0" )
 			    & "  (April – " & FORMAT ( [As of date], "mmm" ) & ")"
 		displayFolder: Text
 
@@ -266,8 +266,8 @@ table Requests
 			        FILTER ( VALUES ( Requests[TA lead] ), NOT ISBLANK ( Requests[TA lead] ) ),
 			        "@n", CALCULATE ( COUNTROWS ( Requests ) )
 			    )
-			VAR topN = MAXX ( leads, [@n] )
-			RETURN CONCATENATEX ( TOPN ( 1, FILTER ( leads, [@n] = topN ), Requests[TA lead], ASC ), Requests[TA lead] )
+			VAR maxLoad = MAXX ( leads, [@n] )
+			RETURN CONCATENATEX ( TOPN ( 1, FILTER ( leads, [@n] = maxLoad ), Requests[TA lead], ASC ), Requests[TA lead] )
 		displayFolder: Performance
 
 	measure 'Leads at minimum' =
@@ -617,15 +617,15 @@ table Requests
 		displayFolder: Text
 
 	measure 'Filter summary' =
-			VAR typ = IF ( ISFILTERED ( DimType[Request type] ), CONCATENATEX ( VALUES ( DimType[Request type] ), DimType[Request type], ", " ) & " requests", "All requests" )
-			VAR reg = IF ( ISFILTERED ( DimOffice[Region] ), CONCATENATEX ( VALUES ( DimOffice[Region] ), DimOffice[Region], ", " ), "all regions" )
-			VAR pra = IF ( ISFILTERED ( DimPractice[Practice] ), "  ·  " & CONCATENATEX ( VALUES ( DimPractice[Practice] ), DimPractice[Practice], ", " ) )
-			VAR off = IF ( ISFILTERED ( DimOffice[Office] ), "  ·  " & CONCATENATEX ( VALUES ( DimOffice[Office] ), DimOffice[Office], ", " ) )
-			VAR ofr = IF ( ISFILTERED ( DimOffer[Programme offer] ), "  ·  " & CONCATENATEX ( VALUES ( DimOffer[Programme offer] ), DimOffer[Programme offer], ", " ) )
+			VAR typ = IF ( ISFILTERED ( 'Request types'[Request type] ), CONCATENATEX ( VALUES ( 'Request types'[Request type] ), 'Request types'[Request type], ", " ) & " requests", "All requests" )
+			VAR reg = IF ( ISFILTERED ( Offices[Region] ), CONCATENATEX ( VALUES ( Offices[Region] ), Offices[Region], ", " ), "all regions" )
+			VAR pra = IF ( ISFILTERED ( Practices[Practice] ), "  ·  " & CONCATENATEX ( VALUES ( Practices[Practice] ), Practices[Practice], ", " ) )
+			VAR off = IF ( ISFILTERED ( Offices[Office] ), "  ·  " & CONCATENATEX ( VALUES ( Offices[Office] ), Offices[Office], ", " ) )
+			VAR ofr = IF ( ISFILTERED ( 'Programme offers'[Programme offer] ), "  ·  " & CONCATENATEX ( VALUES ( 'Programme offers'[Programme offer] ), 'Programme offers'[Programme offer], ", " ) )
 			VAR sts = IF ( ISFILTERED ( Requests[Status] ), "  ·  " & CONCATENATEX ( VALUES ( Requests[Status] ), Requests[Status], ", " ) & " status" )
 			VAR qtr = IF ( ISFILTERED ( Requests[Expected completion quarter] ), "  ·  due " & CONCATENATEX ( VALUES ( Requests[Expected completion quarter] ), Requests[Expected completion quarter], ", " ) )
-			VAR anyFilter = ISFILTERED ( DimType[Request type] ) || ISFILTERED ( DimOffice[Region] ) || ISFILTERED ( DimPractice[Practice] )
-			    || ISFILTERED ( DimOffice[Office] ) || ISFILTERED ( DimOffer[Programme offer] ) || ISFILTERED ( Requests[Status] )
+			VAR anyFilter = ISFILTERED ( 'Request types'[Request type] ) || ISFILTERED ( Offices[Region] ) || ISFILTERED ( Practices[Practice] )
+			    || ISFILTERED ( Offices[Office] ) || ISFILTERED ( 'Programme offers'[Programme offer] ) || ISFILTERED ( Requests[Status] )
 			    || ISFILTERED ( Requests[Expected completion quarter] )
 			RETURN
 			    IF ( anyFilter, typ & "  ·  " & reg & pra & off & ofr & sts & qtr, "All TA requests — every region, practice & status" )

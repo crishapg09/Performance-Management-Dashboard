@@ -20,13 +20,13 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "DimType"
+                      "Entity": "Request types"
                     }
                   },
                   "Property": "Request type"
                 }
               },
-              "queryRef": "DimType.Request type",
+              "queryRef": "Request types.Request type",
               "nativeQueryRef": "Request type",
               "displayName": "Request type"
             }

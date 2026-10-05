@@ -1,43 +1,43 @@
 relationship rel01
 	fromColumn: Requests.'Request type'
-	toColumn: DimType.'Request type'
+	toColumn: 'Request types'.'Request type'
 
 relationship rel02
 	fromColumn: Requests.Practice
-	toColumn: DimPractice.Practice
+	toColumn: Practices.Practice
 
 relationship rel03
 	fromColumn: Requests.'Programme offer'
-	toColumn: DimOffer.'Programme offer'
+	toColumn: 'Programme offers'.'Programme offer'
 
 relationship rel04
 	fromColumn: Requests.Office
-	toColumn: DimOffice.Office
+	toColumn: Offices.Office
 
 relationship rel05
 	fromColumn: Requests.'Opened month'
-	toColumn: DimMonth.Month
+	toColumn: Months.Month
 
 relationship rel06
 	isActive: false
 	fromColumn: Requests.'Completed month'
-	toColumn: DimMonth.Month
+	toColumn: Months.Month
 
 relationship rel07
 	fromColumn: Survey.'Request type'
-	toColumn: DimType.'Request type'
+	toColumn: 'Request types'.'Request type'
 
 relationship rel08
 	fromColumn: Survey.Practice
-	toColumn: DimPractice.Practice
+	toColumn: Practices.Practice
 
 relationship rel09
 	fromColumn: Survey.'Programme offer'
-	toColumn: DimOffer.'Programme offer'
+	toColumn: 'Programme offers'.'Programme offer'
 
 relationship rel10
 	fromColumn: Survey.Office
-	toColumn: DimOffice.Office
+	toColumn: Offices.Office
 
 relationship rel11
 	crossFilteringBehavior: bothDirections

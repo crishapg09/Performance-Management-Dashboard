@@ -1,7 +1,7 @@
 // One row per theme a response was coded to: every positive theme (a comment can
 // carry several), its one improvement theme, and any data-quality flag.
 let
-    Source = Table.SelectColumns(Survey, {"Response ID", "Positive themes", "Improvement theme", "Data quality flag"}),
+    Source = Table.SelectColumns(SurveyRaw, {"Response ID", "Positive themes", "Improvement theme", "Data quality flag"}),
     Rows = List.Combine(List.Transform(Table.ToRecords(Source), (r) =>
         List.Transform(List.Select(List.Transform(Text.Split(r[Positive themes], ";"), Text.Trim), each _ <> ""),
             (t) => {r[Response ID], "Positive", t})

@@ -33,7 +33,7 @@ m('Data date', 'As of date', "MAX ( 'Data date'[As of] )", 'd mmm yyyy', None,
 m(R, 'As of label', '''VAR scopeRows =
     CALCULATETABLE (
         Requests,
-        REMOVEFILTERS ( DimType ), REMOVEFILTERS ( DimPractice ), REMOVEFILTERS ( DimOffer ), REMOVEFILTERS ( DimOffice ),
+        REMOVEFILTERS ( 'Request types' ), REMOVEFILTERS ( Practices ), REMOVEFILTERS ( 'Programme offers' ), REMOVEFILTERS ( Offices ),
         REMOVEFILTERS ( Requests[Status] ), REMOVEFILTERS ( Requests[Expected completion quarter] )
     )
 VAR lo = MINX ( scopeRows, Requests[Opened month] )
@@ -46,10 +46,10 @@ RETURN
 m(R, 'Total requests', 'COUNTROWS ( Requests )', '#,0', P, 'Requests in the current filter.', card=True)
 m(R, 'All requests in scope', '''CALCULATE (
     [Total requests],
-    REMOVEFILTERS ( DimType ),
-    REMOVEFILTERS ( DimPractice ),
-    REMOVEFILTERS ( DimOffer ),
-    REMOVEFILTERS ( DimOffice ),
+    REMOVEFILTERS ( 'Request types' ),
+    REMOVEFILTERS ( Practices ),
+    REMOVEFILTERS ( 'Programme offers' ),
+    REMOVEFILTERS ( Offices ),
     REMOVEFILTERS ( Requests[Status] ),
     REMOVEFILTERS ( Requests[Expected completion quarter] )
 )''', '#,0', P, 'Requests on this page with the slicers cleared (the page scope still applies).')
@@ -104,10 +104,10 @@ m(R, 'Opened in month', 'COUNTROWS ( Requests )', '#,0', P,
   'Requests opened in the month on the axis (uses the Opened month relationship).')
 m(R, 'Completed in month', '''CALCULATE (
     COUNTROWS ( Requests ),
-    USERELATIONSHIP ( Requests[Completed month], DimMonth[Month] )
+    USERELATIONSHIP ( Requests[Completed month], Months[Month] )
 )''', '#,0', P, 'Requests that reached 100% and were closed (or resolved) in the month on the axis.')
-m(R, 'Opened vs completed note', '''"Opened " & FORMAT ( SUMX ( DimMonth, [Opened in month] ) + 0, "#,0" )
-    & "  ·  Completed " & FORMAT ( SUMX ( DimMonth, [Completed in month] ) + 0, "#,0" )
+m(R, 'Opened vs completed note', '''"Opened " & FORMAT ( SUMX ( Months, [Opened in month] ) + 0, "#,0" )
+    & "  ·  Completed " & FORMAT ( SUMX ( Months, [Completed in month] ) + 0, "#,0" )
     & "  (April – " & FORMAT ( [As of date], "mmm" ) & ")"''', None, TX)
 
 m(R, 'Overdue severity note', '''VAR a = CALCULATE ( [Overdue (card)], Requests[Overdue bucket] = "1–30 days" )
@@ -133,8 +133,8 @@ m(R, 'Lead load min', LEADS + '\nRETURN MINX ( leads, [@n] )', '#,0', P, 'Fewest
 m(R, 'Lead load max', LEADS + '\nRETURN MAXX ( leads, [@n] )', '#,0', P, 'Most requests held by one TA lead.')
 m(R, 'Lead load average', LEADS + '\nRETURN AVERAGEX ( leads, [@n] )', '0.0', P, 'Average requests per TA lead.')
 m(R, 'Busiest TA lead', LEADS + '''
-VAR topN = MAXX ( leads, [@n] )
-RETURN CONCATENATEX ( TOPN ( 1, FILTER ( leads, [@n] = topN ), Requests[TA lead], ASC ), Requests[TA lead] )''', None, P)
+VAR maxLoad = MAXX ( leads, [@n] )
+RETURN CONCATENATEX ( TOPN ( 1, FILTER ( leads, [@n] = maxLoad ), Requests[TA lead], ASC ), Requests[TA lead] )''', None, P)
 m(R, 'Leads at minimum', LEADS + '''
 VAR low = MINX ( leads, [@n] )
 VAR k = COUNTROWS ( FILTER ( leads, [@n] = low ) )
@@ -220,16 +220,16 @@ m(R, 'Overdue note', '''"Days overdue = as-of date (" & FORMAT ( [As of date], "
     & "If this looks too high, the TA lead should update the Expected Completion Date on the request."''', None, TX)
 
 # filter summary (Performance and Data Quality)
-FILTER_PARTS = '''VAR typ = IF ( ISFILTERED ( DimType[Request type] ), CONCATENATEX ( VALUES ( DimType[Request type] ), DimType[Request type], ", " ) & " requests", "All requests" )
-VAR reg = IF ( ISFILTERED ( DimOffice[Region] ), CONCATENATEX ( VALUES ( DimOffice[Region] ), DimOffice[Region], ", " ), "all regions" )
-VAR pra = IF ( ISFILTERED ( DimPractice[Practice] ), "  ·  " & CONCATENATEX ( VALUES ( DimPractice[Practice] ), DimPractice[Practice], ", " ) )
-VAR off = IF ( ISFILTERED ( DimOffice[Office] ), "  ·  " & CONCATENATEX ( VALUES ( DimOffice[Office] ), DimOffice[Office], ", " ) )
-VAR ofr = IF ( ISFILTERED ( DimOffer[Programme offer] ), "  ·  " & CONCATENATEX ( VALUES ( DimOffer[Programme offer] ), DimOffer[Programme offer], ", " ) )'''
+FILTER_PARTS = '''VAR typ = IF ( ISFILTERED ( 'Request types'[Request type] ), CONCATENATEX ( VALUES ( 'Request types'[Request type] ), 'Request types'[Request type], ", " ) & " requests", "All requests" )
+VAR reg = IF ( ISFILTERED ( Offices[Region] ), CONCATENATEX ( VALUES ( Offices[Region] ), Offices[Region], ", " ), "all regions" )
+VAR pra = IF ( ISFILTERED ( Practices[Practice] ), "  ·  " & CONCATENATEX ( VALUES ( Practices[Practice] ), Practices[Practice], ", " ) )
+VAR off = IF ( ISFILTERED ( Offices[Office] ), "  ·  " & CONCATENATEX ( VALUES ( Offices[Office] ), Offices[Office], ", " ) )
+VAR ofr = IF ( ISFILTERED ( 'Programme offers'[Programme offer] ), "  ·  " & CONCATENATEX ( VALUES ( 'Programme offers'[Programme offer] ), 'Programme offers'[Programme offer], ", " ) )'''
 m(R, 'Filter summary', FILTER_PARTS + '''
 VAR sts = IF ( ISFILTERED ( Requests[Status] ), "  ·  " & CONCATENATEX ( VALUES ( Requests[Status] ), Requests[Status], ", " ) & " status" )
 VAR qtr = IF ( ISFILTERED ( Requests[Expected completion quarter] ), "  ·  due " & CONCATENATEX ( VALUES ( Requests[Expected completion quarter] ), Requests[Expected completion quarter], ", " ) )
-VAR anyFilter = ISFILTERED ( DimType[Request type] ) || ISFILTERED ( DimOffice[Region] ) || ISFILTERED ( DimPractice[Practice] )
-    || ISFILTERED ( DimOffice[Office] ) || ISFILTERED ( DimOffer[Programme offer] ) || ISFILTERED ( Requests[Status] )
+VAR anyFilter = ISFILTERED ( 'Request types'[Request type] ) || ISFILTERED ( Offices[Region] ) || ISFILTERED ( Practices[Practice] )
+    || ISFILTERED ( Offices[Office] ) || ISFILTERED ( 'Programme offers'[Programme offer] ) || ISFILTERED ( Requests[Status] )
     || ISFILTERED ( Requests[Expected completion quarter] )
 RETURN
     IF ( anyFilter, typ & "  ·  " & reg & pra & off & ofr & sts & qtr, "All TA requests — every region, practice & status" )''', None, TX)
@@ -244,11 +244,11 @@ m(SV, 'Improvement opportunities', "CALCULATE ( COUNTROWS ( Survey ), KEEPFILTER
 m(SV, 'Data-quality flags', "CALCULATE ( COUNTROWS ( Survey ), KEEPFILTERS ( NOT ISBLANK ( Survey[Data quality flag] ) ) )", '#,0', FB,
   'Responses about requests that were cancelled, misassigned or could not be evaluated.', card=True)
 m(SV, 'Offices responding', 'DISTINCTCOUNTNOBLANK ( Survey[Survey office] )', '#,0', FB)
-m(SV, 'All responses', 'CALCULATE ( [Responses], REMOVEFILTERS ( DimType ), REMOVEFILTERS ( DimPractice ), REMOVEFILTERS ( DimOffer ), REMOVEFILTERS ( DimOffice ) )', '#,0', FB)
+m(SV, 'All responses', "CALCULATE ( [Responses], REMOVEFILTERS ( 'Request types' ), REMOVEFILTERS ( Practices ), REMOVEFILTERS ( 'Programme offers' ), REMOVEFILTERS ( Offices ) )", '#,0', FB)
 m(SV, 'Showing responses', '''"Showing " & FORMAT ( [Responses (card)], "#,0" ) & " survey responses  (" & FORMAT ( DIVIDE ( [Responses (card)], [All responses] ), "0%" ) & " of all)"''', None, TX)
 m(SV, 'Feedback filter summary', FILTER_PARTS + '''
-VAR anyFilter = ISFILTERED ( DimType[Request type] ) || ISFILTERED ( DimOffice[Region] ) || ISFILTERED ( DimPractice[Practice] )
-    || ISFILTERED ( DimOffice[Office] ) || ISFILTERED ( DimOffer[Programme offer] )
+VAR anyFilter = ISFILTERED ( 'Request types'[Request type] ) || ISFILTERED ( Offices[Region] ) || ISFILTERED ( Practices[Practice] )
+    || ISFILTERED ( Offices[Office] ) || ISFILTERED ( 'Programme offers'[Programme offer] )
 RETURN
     IF ( anyFilter, typ & "  ·  " & reg & pra & off & ofr, "All survey responses — every request type, region & practice" )''', None, TX)
 
@@ -322,7 +322,7 @@ RETURN
         & IF ( u > 0, ", " & FORMAT ( u, "#,0" ) & " not matched to a request" ) & ". "
         & "Each response is matched to the request it rates by case number, so the slicers above apply here."''', None, TX)
 m(SV, 'Data note', '''VAR f = [Data-quality flags (card)]
-VAR matched = CALCULATE ( [Responses], Survey[Matched to request] = "Yes", REMOVEFILTERS ( DimType ), REMOVEFILTERS ( DimPractice ), REMOVEFILTERS ( DimOffer ), REMOVEFILTERS ( DimOffice ) )
+VAR matched = CALCULATE ( [Responses], Survey[Matched to request] = "Yes", REMOVEFILTERS ( 'Request types' ), REMOVEFILTERS ( Practices ), REMOVEFILTERS ( 'Programme offers' ), REMOVEFILTERS ( Offices ) )
 RETURN
     IF ( f > 0,
         FORMAT ( f, "#,0" ) & " of the " & FORMAT ( [Responses (card)], "#,0" ) & " responses describe requests that were "

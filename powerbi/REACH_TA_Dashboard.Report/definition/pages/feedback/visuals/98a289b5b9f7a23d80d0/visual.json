@@ -20,13 +20,13 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "DimOffice"
+                      "Entity": "Offices"
                     }
                   },
                   "Property": "Office"
                 }
               },
-              "queryRef": "DimOffice.Office",
+              "queryRef": "Offices.Office",
               "nativeQueryRef": "Office",
               "displayName": "Country office"
             }

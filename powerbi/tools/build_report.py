@@ -264,11 +264,11 @@ def header(p, subtitle_spec):
 
 def slicers(p, with_delivery, nonempty):
     y = 84
-    widths = [('type', 'DimType[Request type]', 'Request type', 'Type', 170),
-              ('practice', 'DimPractice[Practice]', 'Practice / sector', 'Practice', 235),
-              ('region', 'DimOffice[Region]', 'Region', 'Region', 160),
-              ('office', 'DimOffice[Office]', 'Country office', 'Office', 200),
-              ('offer', 'DimOffer[Programme offer]', 'Programme offer', 'Offer', 300)]
+    widths = [('type', "'Request types'[Request type]", 'Request type', 'Type', 170),
+              ('practice', 'Practices[Practice]', 'Practice / sector', 'Practice', 235),
+              ('region', 'Offices[Region]', 'Region', 'Region', 160),
+              ('office', 'Offices[Office]', 'Country office', 'Office', 200),
+              ('offer', "'Programme offers'[Programme offer]", 'Programme offer', 'Offer', 300)]
     x = M
     for key, spec, label, sync, w in widths:
         p.slicer('sl-' + key, x, y, w, spec, label, sync, nonempty)
@@ -310,16 +310,16 @@ def performance():
                                        [('Pick a metric to break it down by practice. Received in the last 30 days is a subset, to show inflow.', 9, MUTED, False)]])
     y += 44
     p.slicer('sl-metric', M, y, 260, "'Portfolio metric'[Metric]", 'Metric', None, None, h=300, single=True, mode='Basic')
-    p.bar('metric-practice', M + 272, y, INNER - 272, 300, 'Selected metric by practice', 'DimPractice[Practice]',
+    p.bar('metric-practice', M + 272, y, INNER - 272, 300, 'Selected metric by practice', 'Practices[Practice]',
           [('Requests.[Selected metric]', 'Requests')], tooltips=[('Requests.[Selected metric share of practice]', "Share of the practice's requests")])
     p.note('coverage', M, y + 306, INNER, 40, 'Requests.[Coverage note]', size=9)
     y += 360
 
     p.heading('h1', y, 1, 'Demand, delivery & status')
     y += 44
-    p.bar('io', M, y, 780, 320, 'Requests opened vs. completed, by month (2026)', 'DimMonth[Month label]',
+    p.bar('io', M, y, 780, 320, 'Requests opened vs. completed, by month (2026)', 'Months[Month label]',
           [('Requests.[Opened in month]', 'Opened'), ('Requests.[Completed in month]', 'Completed')],
-          kind='clusteredColumnChart', sort=('DimMonth[Month label]', 'Ascending'))
+          kind='clusteredColumnChart', sort=('Months[Month label]', 'Ascending'))
     p.note('io-note', M, y + 322, 780, 26, 'Requests.[Opened vs completed note]', size=9)
     p.bar('severity', M + 792, y, INNER - 792, 220, 'Overdue severity', 'Requests[Overdue bucket]',
           [('Requests.[Overdue]', 'Overdue requests')], colors=[('Requests[Overdue bucket]', BUCKET_COLORS)],
@@ -329,11 +329,11 @@ def performance():
 
     p.heading('h2', y, 2, 'Workload: practices, regions & staff')
     y += 44
-    p.bar('by-practice', M, y, 780, 480, 'Requests by practice, by implementation status', 'DimPractice[Practice]',
+    p.bar('by-practice', M, y, 780, 480, 'Requests by practice, by implementation status', 'Practices[Practice]',
           ['Requests.[Total requests]'], series='Requests[Status]', kind='barChart',
           colors=[('Requests[Status]', STATUS_COLORS)])
     p.table('practice-leads', M + 792, y, INNER - 792, 480, 'TAs and leads by practice',
-            [('DimPractice[Practice]', 'Practice'), ('Requests.[Total requests]', 'TAs'),
+            [('Practices[Practice]', 'Practice'), ('Requests.[Total requests]', 'TAs'),
              ('Requests.[TA leads]', 'Leads'), ('Requests.[Requests per lead]', 'Avg / lead')],
             sort=('Requests.[Total requests]', 'Descending'))
     y += 492
@@ -454,7 +454,7 @@ def data_quality():
     p.heading('s4', y, 4, 'Summary of where requests sit', GREEN)
     p.text('s4-intro', M, y + 36, INNER, 24, [[('The whole portfolio in one view, each request counted once. Click any segment of a bar to list those requests in the table below.', 9, MUTED, False)]])
     y += 66
-    p.bar('phase', M, y, INNER, 480, 'Where every request sits, by practice', 'DimPractice[Practice]',
+    p.bar('phase', M, y, INNER, 480, 'Where every request sits, by practice', 'Practices[Practice]',
           ['Requests.[Requests in phase]'], series='Requests[Phase]', kind='barChart',
           colors=[('Requests[Phase]', PHASE_COLORS)])
     p.note('phase-note', M, y + 484, INNER, 40, 'Requests.[Phase note]', size=9)
@@ -545,8 +545,8 @@ def feedback():
             filters=[filter_in(vid('feedback', 'pq-f'), 'Survey[Featured quote tone]', ['Positive'])])
     y += 212
     p.bar('pos-themes', M, y, INNER, 300, 'Positive feedback, by case type — one comment can carry several themes; click a segment to read those comments',
-          'SurveyThemes[Theme]', [('SurveyThemes.[Theme mentions]', 'Mentions')], series='DimType[Request type]', kind='barChart',
-          colors=[('DimType[Request type]', TYPE_COLORS)],
+          'SurveyThemes[Theme]', [('SurveyThemes.[Theme mentions]', 'Mentions')], series="'Request types'[Request type]", kind='barChart',
+          colors=[("'Request types'[Request type]", TYPE_COLORS)],
           filters=[filter_in(vid('feedback', 'pt-f'), 'SurveyThemes[Kind]', ['Positive'])])
     y += 320
 

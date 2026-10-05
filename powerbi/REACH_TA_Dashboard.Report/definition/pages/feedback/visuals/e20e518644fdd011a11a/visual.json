@@ -20,13 +20,13 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "DimOffer"
+                      "Entity": "Programme offers"
                     }
                   },
                   "Property": "Programme offer"
                 }
               },
-              "queryRef": "DimOffer.Programme offer",
+              "queryRef": "Programme offers.Programme offer",
               "nativeQueryRef": "Programme offer",
               "displayName": "Programme offer"
             }

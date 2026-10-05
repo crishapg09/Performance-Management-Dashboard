@@ -163,8 +163,12 @@ are set as page filters on `Requests[In performance scope]` and
 | `Requests` | TA request, with every flag the measures use (overdue, on track, phase, stalled, passes checks…), each column described in the model |
 | `Survey` | survey response, linked to its request by case number (CS…) |
 | `SurveyThemes` | theme a response was coded to (positive, improvement, data-quality flag) |
-| `DimType`, `DimPractice`, `DimOffice`, `DimOffer` | slicer values shared by requests and survey |
-| `DimMonth`, `Portfolio metric`, `Completeness check`, `Data date` | chart axes and the as-of date |
+| `Request types`, `Practices`, `Offices`, `Programme offers` | the values each slicer lists, shared by requests and survey so one slicer filters both. Calculated inside Power BI from the two tables above |
+| `Months`, `Data date` | the month axis and the as-of date, also calculated inside Power BI |
+| `Portfolio metric`, `Completeness check` | fixed lists that drive two charts |
+
+A refresh reads ServiceNow twice: once for `Requests`, and once for `Survey` to
+link each response to the request it rates. Everything else is built from those.
 
 Every figure is measured from the **as-of date**: the day of the latest
 Created/Opened/Updated timestamp in the data, as on the web dashboard.

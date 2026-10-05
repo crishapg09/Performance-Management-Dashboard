@@ -20,13 +20,13 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "DimMonth"
+                      "Entity": "Months"
                     }
                   },
                   "Property": "Month label"
                 }
               },
-              "queryRef": "DimMonth.Month label",
+              "queryRef": "Months.Month label",
               "nativeQueryRef": "Month label"
             }
           ]
@@ -73,7 +73,7 @@
               "Column": {
                 "Expression": {
                   "SourceRef": {
-                    "Entity": "DimMonth"
+                    "Entity": "Months"
                   }
                 },
                 "Property": "Month label"

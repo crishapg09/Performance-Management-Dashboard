@@ -1,4 +1,4 @@
-/// The as-of date and the refresh time.
+/// The as-of date every figure is measured from (the day of the latest activity in Requests), and the refresh time.
 table 'Data date'
 
 	/// The date every figure is measured from: the day of the latest activity in the data.
@@ -7,18 +7,22 @@ table 'Data date'
 
 	column 'As of'
 		dataType: dateTime
+		isNameInferred
 		formatString: d mmm yyyy
 		summarizeBy: none
-		sourceColumn: As of
+		sourceColumn: [As of]
 
 	column Refreshed
 		dataType: dateTime
+		isNameInferred
 		formatString: d mmm yyyy hh:nn
 		summarizeBy: none
-		sourceColumn: Refreshed
+		sourceColumn: [Refreshed]
 
-	partition 'Data date' = m
+	partition 'Data date' = calculated
 		mode: import
 		source =
-				// The as-of date every figure is measured from, and when the data was refreshed.
-				#table(type table [#"As of" = date, Refreshed = datetime], {{Date.From(AsOf), DateTime.LocalNow()}})
+				VAR stamp =
+				    MAXX ( Requests, MAX ( MAX ( Requests[Created], Requests[Opened] ), Requests[Updated] ) )
+				RETURN
+				    ROW ( "As of", DATE ( YEAR ( stamp ), MONTH ( stamp ), DAY ( stamp ) ), "Refreshed", NOW () )

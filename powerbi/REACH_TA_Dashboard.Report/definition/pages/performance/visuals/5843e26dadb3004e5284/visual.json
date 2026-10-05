@@ -20,13 +20,13 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "DimPractice"
+                      "Entity": "Practices"
                     }
                   },
                   "Property": "Practice"
                 }
               },
-              "queryRef": "DimPractice.Practice",
+              "queryRef": "Practices.Practice",
               "nativeQueryRef": "Practice",
               "displayName": "Practice"
             },

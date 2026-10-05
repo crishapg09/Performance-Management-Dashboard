@@ -1,0 +1,21 @@
+/// Global practices, for the slicer.
+table Practices
+
+	column Practice
+		dataType: string
+		isNameInferred
+		summarizeBy: none
+		sourceColumn: [Practice]
+
+	partition Practices = calculated
+		mode: import
+		source =
+				VAR t =
+				    DISTINCT (
+				        UNION (
+				            DISTINCT ( SELECTCOLUMNS ( Requests, "Practice", Requests[Practice] ) ),
+				            DISTINCT ( SELECTCOLUMNS ( Survey, "Practice", Survey[Practice] ) )
+				        )
+				    )
+				RETURN
+				    FILTER ( t, NOT ISBLANK ( [Practice] ) )
