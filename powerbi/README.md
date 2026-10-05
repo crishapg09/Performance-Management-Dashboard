@@ -62,6 +62,11 @@ Also check that `Implementation Status` reads `0%`, `25%` … `100%`,
 `Unassigned` or `Discontinued`, and `Request Type` reads `Big Ticket Item` or
 `Regular`. The pages rely on those values.
 
+**Finding the office field.** The `FieldFinder` query (**Source → FieldFinder**)
+reads 200 recent cases and ranks every API field by how many of its values are
+known country offices. The field at the top goes on the Office/Division row of
+`FieldMap`.
+
 **Which field holds what?** The `ApiSample` query (**Source → ApiSample**)
 lists every field ServiceNow returns for five recent cases, one field per row.
 Use it to find the right field for any mapping. In `FieldMap`, a mapping can
