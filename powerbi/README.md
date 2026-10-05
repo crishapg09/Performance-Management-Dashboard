@@ -42,19 +42,27 @@ powerbi/
 The model calls the standard ServiceNow Table API
 (`/api/now/table/<table>`), 5,000 records per call, until it has every case.
 
-**Map the custom fields.** Open the `FieldMap` query (**Transform data →
-Source → FieldMap**). Each row is one request field the model uses and the API
-field that supplies it. Standard fields are filled in already (`number`,
-`short_description`, `assigned_to`, `opened_at`, …). Rows whose API field
-starts with `TODO_` are UNICEF's custom fields (request type, office, region,
-global practice, programme offer, implementation status, expected dates,
-details, objectives, modality…). Replace each `TODO_…` with the field's
-internal name (`u_…`). To find it, right-click the field label on a case form
-in ServiceNow; the menu shows **Show - 'u_…'**. Or ask whoever set up your API
-access. A `TODO_` field loads as blank, so the model refreshes before the
-mapping is complete, but the pages will be wrong until it is done. The
-`Column` names on the left are the model's own names for each field (they are
-the names the web dashboard's export uses); only the `ApiField` side changes.
+**The field mapping.** The `FieldMap` query (**Transform data → Source →
+FieldMap**) lists each request field the model uses and the API field that
+supplies it. It is filled in from the fields of UNICEF's
+`sn_customerservice_case` API. The model asks the API for these fields itself,
+so you only need the instance and table, not the full URL with
+`sysparm_fields`.
+
+Three of the mappings are best guesses. After the first refresh, open
+`RawRequestsApi`, find a case you know, and compare it with ServiceNow:
+
+| Column | Mapped to | Should show | If not, try |
+|---|---|---|---|
+| `Case Report` | `parent` | the request number (CSR…) | the request's own number field; if blank, the case number (CS…) is used |
+| `Office/Division` | `location` | the country office, e.g. "Kenya" | `u_business_area` |
+| `Primary Programme Offer` | `u_category` | e.g. "Policy Reform and Programme Design" | `u_sub_category` |
+
+Also check that `Implementation Status` reads `0%`, `25%` … `100%`,
+`Unassigned` or `Discontinued`, and `Request Type` reads `Big Ticket Item` or
+`Regular`. The pages rely on those values. To change a mapping, edit the
+`ApiField` text in `FieldMap` (or in `tools/m/FieldMap.m`, then rerun
+`build_model.py`).
 
 > If your API is a custom one (a Scripted REST API that already returns the
 > report's columns), the `RawRequestsApi` query needs adapting to its URL and
