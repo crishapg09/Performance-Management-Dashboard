@@ -2,7 +2,10 @@
 // ratings, comment, coded themes, with the corrections and exclusions applied.
 // Port of scripts/extract_survey.py. Survey adds the request each response rates.
 let
-    Book = Excel.Workbook(fnReadFile(SurveyWorkbookPath), [UseHeaders = false, DelayTypes = true, InferSheetDimensions = true]),
+    // the parameter goes straight into the source function, so the Power BI service can see
+    // the source and refresh it (a path passed through a helper counts as a "dynamic" source)
+    WorkbookFile = if Text.StartsWith(Text.Lower(SurveyWorkbookPath), "http") then Web.Contents(SurveyWorkbookPath) else File.Contents(SurveyWorkbookPath),
+    Book = Excel.Workbook(WorkbookFile, [UseHeaders = false, DelayTypes = true, InferSheetDimensions = true]),
     Merged = fnSurveySheet(Book, "Merged data"),
     // the merge blanks some open-text answers, so the raw sheet is the authority on what was written
     Responses = fnSurveySheet(Book, "Response data"),

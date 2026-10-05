@@ -86,19 +86,28 @@ API uses. Credentials are stored by Power BI, never in these files.
 
 ## 4. Publish and schedule
 
-1. **Home → Publish** to your workspace.
-2. In the workspace, open the semantic model's **Settings**:
-   - **Data source credentials**: sign in to ServiceNow, and to SharePoint for
-     the survey workbook.
-   - If ServiceNow or the files are only reachable inside UNICEF's network,
-     IT needs to put an **on-premises data gateway** in front of them.
-     Cloud-to-cloud (ServiceNow cloud + SharePoint Online) usually needs none.
-   - **Scheduled refresh**: e.g. daily at 06:00.
-3. Share it as an **app** or through workspace access. Access follows UNICEF
-   sign-in, so no extra password or Azure setup is needed.
+The project files hold no data, so **refresh in Desktop before every publish**:
+publishing an empty model gives a blank report.
 
-For scheduled refresh, keep the survey workbook on SharePoint or OneDrive. The
-service cannot read a file on someone's laptop without a gateway.
+1. In Desktop, set `SurveyWorkbookPath` to the survey workbook's **web
+   address**. A `C:\…` path, even inside a synced OneDrive folder, works in
+   Desktop but the Power BI service cannot reach it. Open the workbook in
+   Excel desktop, choose **File → Info → Copy path**, and remove anything
+   from `?` onwards. It looks like
+   `https://unicef-my.sharepoint.com/personal/…/REACH_TA_Survey_Analysis_FINAL.xlsx`.
+   Sign in with **Organizational account** when asked.
+2. **Home → Refresh**, check the pages, then **Home → Publish** to your workspace.
+3. In the workspace, open the **semantic model** (same name as the report)
+   **→ ⋯ → Settings**:
+   - **Data source credentials**: ServiceNow → **Basic**, with the integration
+     account; the survey workbook → **OAuth2**, with your UNICEF account. Set
+     both privacy levels to **Organizational**.
+   - **Gateway**: usually none is needed (ServiceNow cloud + SharePoint Online).
+     If the settings say one is required, ask IT.
+   - **Scheduled refresh**: e.g. daily at 06:00.
+   - Click **Refresh now**. If it fails, **Refresh history** shows the error.
+4. Share it as an **app** or through workspace access. Access follows UNICEF
+   sign-in.
 
 ## 5. Check the numbers
 
