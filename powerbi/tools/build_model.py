@@ -259,9 +259,27 @@ RETURN
         "Month order", YEAR ( [Date] ) * 100 + MONTH ( [Date] )
     )''', desc='Months from April 2026 (when the REACH import landed) to the as-of month.', columns=[
     col('Month', DATE, fmt='mmm yyyy', hidden=True), col('Month label', sort='Month order'), col('Month order', I, hidden=True)])
-TABLES['Portfolio metric'] = dict(query='PortfolioMetric', desc='Pick a metric to re-break the practice chart.', columns=[
+# Fixed lists, as DAX tables (as Power Query #table literals they did not load in Desktop)
+TABLES['Portfolio metric'] = dict(dax='''DATATABLE (
+    "Metric", STRING, "Metric order", INTEGER, "Description", STRING,
+    {
+        { "Received last 30 days", 1, "opened in the last 30 days" },
+        { "Active & on track", 2, "in progress, not overdue" },
+        { "Completed", 3, "reached 100%" },
+        { "Overdue", 4, "past their expected completion date" }
+    }
+)''', desc='The four "Where the work stands" metrics; click one to re-break the practice chart.', columns=[
     col('Metric', sort='Metric order'), col('Metric order', I, hidden=True), col('Description')])
-TABLES['Completeness check'] = dict(query='CompletenessCheck', desc='Fields checked on started requests.', columns=[
+TABLES['Completeness check'] = dict(dax='''DATATABLE (
+    "Field", STRING, "Field order", INTEGER,
+    {
+        { "TA lead", 1 },
+        { "Expected completion", 2 },
+        { "Details/Description", 3 },
+        { "Modality", 4 },
+        { "Programme offer", 5 }
+    }
+)''', desc='The fields checked for completeness on started requests (25%+).', columns=[
     col('Field', sort='Field order'), col('Field order', I, hidden=True)])
 TABLES['Data date'] = dict(dax='''VAR stamp =
     MAXX ( Requests, MAX ( MAX ( Requests[Created], Requests[Opened] ), Requests[Updated] ) )

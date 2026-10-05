@@ -427,7 +427,7 @@ def data_quality():
     p.heading('s2', y, 2, 'Started & in delivery — 25% onwards', NAVY)
     y += 44
     p.bar('completeness', M, y, 600, 250, 'Field completeness (25%+)', "'Completeness check'[Field]",
-          [('Requests.[Completeness]', 'Filled')], measure_color='Requests.[Completeness colour]',
+          [('Requests.[Completeness]', 'Filled')], colors=[("'Completeness check'[Field]", {f: BLUE for f in ('TA lead', 'Expected completion', 'Details/Description', 'Modality', 'Programme offer')})],
           sort=("'Completeness check'[Field]", 'Ascending'))
     p.kpi('score', M + 612, y, 300, 'Record quality score (25%+)', 'Requests.[Record quality score]', 'Requests.[Record quality sub]', BLUE, value_size=30)
     p.kpi('placeholder', M + 924, y, INNER - 924, 'Placeholder descriptions', 'Requests.[Placeholder descriptions (card)]', None, AMBER, h=74)

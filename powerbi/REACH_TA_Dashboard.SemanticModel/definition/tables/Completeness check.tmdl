@@ -1,22 +1,31 @@
-/// Fields checked on started requests.
+/// The fields checked for completeness on started requests (25%+).
 table 'Completeness check'
 
 	column Field
 		dataType: string
+		isNameInferred
 		summarizeBy: none
-		sourceColumn: Field
+		sourceColumn: [Field]
 		sortByColumn: 'Field order'
 
 	column 'Field order'
 		dataType: int64
+		isNameInferred
 		formatString: 0
 		isHidden
 		summarizeBy: none
-		sourceColumn: Field order
+		sourceColumn: [Field order]
 
-	partition 'Completeness check' = m
+	partition 'Completeness check' = calculated
 		mode: import
 		source =
-				// The fields checked for completeness on started requests (25%+).
-				#table(type table [Field = text, #"Field order" = Int64.Type],
-				    {{"TA lead", 1}, {"Expected completion", 2}, {"Details/Description", 3}, {"Modality", 4}, {"Programme offer", 5}})
+				DATATABLE (
+				    "Field", STRING, "Field order", INTEGER,
+				    {
+				        { "TA lead", 1 },
+				        { "Expected completion", 2 },
+				        { "Details/Description", 3 },
+				        { "Modality", 4 },
+				        { "Programme offer", 5 }
+				    }
+				)

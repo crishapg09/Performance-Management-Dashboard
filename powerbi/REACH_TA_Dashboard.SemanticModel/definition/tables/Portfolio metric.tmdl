@@ -1,32 +1,36 @@
-/// Pick a metric to re-break the practice chart.
+/// The four "Where the work stands" metrics; click one to re-break the practice chart.
 table 'Portfolio metric'
 
 	column Metric
 		dataType: string
+		isNameInferred
 		summarizeBy: none
-		sourceColumn: Metric
+		sourceColumn: [Metric]
 		sortByColumn: 'Metric order'
 
 	column 'Metric order'
 		dataType: int64
+		isNameInferred
 		formatString: 0
 		isHidden
 		summarizeBy: none
-		sourceColumn: Metric order
+		sourceColumn: [Metric order]
 
 	column Description
 		dataType: string
+		isNameInferred
 		summarizeBy: none
-		sourceColumn: Description
+		sourceColumn: [Description]
 
-	partition 'Portfolio metric' = m
+	partition 'Portfolio metric' = calculated
 		mode: import
 		source =
-				// The four "Where the work stands" metrics; pick one to re-break the practice chart.
-				#table(type table [Metric = text, #"Metric order" = Int64.Type, Description = text],
+				DATATABLE (
+				    "Metric", STRING, "Metric order", INTEGER, "Description", STRING,
 				    {
-				        {"Received last 30 days", 1, "opened in the last 30 days"},
-				        {"Active & on track", 2, "in progress, not overdue"},
-				        {"Completed", 3, "reached 100%"},
-				        {"Overdue", 4, "past their expected completion date"}
-				    })
+				        { "Received last 30 days", 1, "opened in the last 30 days" },
+				        { "Active & on track", 2, "in progress, not overdue" },
+				        { "Completed", 3, "reached 100%" },
+				        { "Overdue", 4, "past their expected completion date" }
+				    }
+				)
