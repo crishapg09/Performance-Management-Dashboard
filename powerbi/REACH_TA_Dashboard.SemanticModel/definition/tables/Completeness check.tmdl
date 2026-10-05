@@ -1,0 +1,22 @@
+/// Fields checked on started requests.
+table 'Completeness check'
+
+	column Field
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Field
+		sortByColumn: 'Field order'
+
+	column 'Field order'
+		dataType: int64
+		formatString: 0
+		isHidden
+		summarizeBy: none
+		sourceColumn: Field order
+
+	partition 'Completeness check' = m
+		mode: import
+		source =
+				// The fields checked for completeness on started requests (25%+).
+				#table(type table [Field = text, #"Field order" = Int64.Type],
+				    {{"TA lead", 1}, {"Expected completion", 2}, {"Details/Description", 3}, {"Modality", 4}, {"Programme offer", 5}})

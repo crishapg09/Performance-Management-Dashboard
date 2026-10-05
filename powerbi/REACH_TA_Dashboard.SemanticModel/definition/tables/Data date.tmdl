@@ -1,0 +1,24 @@
+/// The as-of date and the refresh time.
+table 'Data date'
+
+	/// The date every figure is measured from: the day of the latest activity in the data.
+	measure 'As of' = MAX ( 'Data date'[As of] )
+		formatString: d mmm yyyy
+
+	column 'As of'
+		dataType: dateTime
+		formatString: d mmm yyyy
+		summarizeBy: none
+		sourceColumn: As of
+
+	column Refreshed
+		dataType: dateTime
+		formatString: d mmm yyyy hh:nn
+		summarizeBy: none
+		sourceColumn: Refreshed
+
+	partition 'Data date' = m
+		mode: import
+		source =
+				// The as-of date every figure is measured from, and when the data was refreshed.
+				#table(type table [#"As of" = date, Refreshed = datetime], {{Date.From(AsOf), DateTime.LocalNow()}})

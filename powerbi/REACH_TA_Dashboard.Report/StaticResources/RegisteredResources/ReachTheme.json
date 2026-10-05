@@ -1,0 +1,44 @@
+{
+  "name": "REACH TA",
+  "dataColors": [
+    "#0B6FA4",
+    "#2E7D5B",
+    "#E0A21E",
+    "#C0453F",
+    "#1CABE2",
+    "#16385C",
+    "#CD6A2E",
+    "#9CC6E0",
+    "#5FA98A",
+    "#B77A10"
+  ],
+  "foreground": "#0F2238",
+  "foregroundNeutralSecondary": "#5B7186",
+  "background": "#FFFFFF",
+  "tableAccent": "#0B6FA4",
+  "good": "#2E7D5B",
+  "neutral": "#E0A21E",
+  "bad": "#C0453F",
+  "textClasses": {
+    "callout": {
+      "fontSize": 26,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#0F2238"
+    },
+    "title": {
+      "fontSize": 11,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#0F2238"
+    },
+    "header": {
+      "fontSize": 11,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#0F2238"
+    },
+    "label": {
+      "fontSize": 9,
+      "fontFace": "Segoe UI",
+      "color": "#43586B"
+    }
+  }
+}

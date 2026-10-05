@@ -1,0 +1,1172 @@
+/// One row per TA request, cleaned and normalised as in the web dashboard.
+table Requests
+
+	measure 'As of label' =
+			VAR scopeRows =
+			    CALCULATETABLE (
+			        Requests,
+			        REMOVEFILTERS ( DimType ), REMOVEFILTERS ( DimPractice ), REMOVEFILTERS ( DimOffer ), REMOVEFILTERS ( DimOffice ),
+			        REMOVEFILTERS ( Requests[Status] ), REMOVEFILTERS ( Requests[Expected completion quarter] )
+			    )
+			VAR lo = MINX ( scopeRows, Requests[Opened month] )
+			VAR hi = MAXX ( scopeRows, Requests[Opened month] )
+			RETURN
+			    "Created " & FORMAT ( lo, "mmm" ) & IF ( hi <> lo, "–" & FORMAT ( hi, "mmm" ) ) & " " & FORMAT ( hi, "yyyy" )
+			        & "  ·  as of " & FORMAT ( [As of], "d mmm yyyy" )
+		displayFolder: Text
+
+	/// Requests in the current filter.
+	measure 'Total requests' = COUNTROWS ( Requests )
+		formatString: #,0
+		displayFolder: Performance
+
+	measure 'Total requests (card)' = COALESCE ( [Total requests], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Requests on this page with the slicers cleared (the page scope still applies).
+	measure 'All requests in scope' =
+			CALCULATE (
+			    [Total requests],
+			    REMOVEFILTERS ( DimType ),
+			    REMOVEFILTERS ( DimPractice ),
+			    REMOVEFILTERS ( DimOffer ),
+			    REMOVEFILTERS ( DimOffice ),
+			    REMOVEFILTERS ( Requests[Status] ),
+			    REMOVEFILTERS ( Requests[Expected completion quarter] )
+			)
+		formatString: #,0
+		displayFolder: Performance
+
+	measure 'Share of all requests' = DIVIDE ( [Total requests], [All requests in scope] )
+		formatString: 0%
+		displayFolder: Performance
+
+	measure 'Showing requests' = "Showing " & FORMAT ( [Total requests (card)], "#,0" ) & " requests  (" & FORMAT ( COALESCE ( [Share of all requests], 0 ), "0%" ) & " of all)"
+		displayFolder: Text
+
+	measure 'Big ticket' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Request type] = "Big Ticket" )
+			)
+		formatString: #,0
+		displayFolder: Performance
+
+	measure 'Big ticket (card)' = COALESCE ( [Big ticket], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	measure Routine =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Request type] = "Routine" )
+			)
+		formatString: #,0
+		displayFolder: Performance
+
+	measure 'Routine (card)' = COALESCE ( [Routine], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	measure 'Big ticket vs routine' = FORMAT ( [Big ticket (card)], "#,0" ) & " · " & FORMAT ( [Routine (card)], "#,0" )
+		displayFolder: Text
+
+	measure 'Big ticket vs routine sub' =
+			FORMAT ( DIVIDE ( [Big ticket (card)], [Total requests] ), "0%" ) & " big ticket · "
+			    & FORMAT ( DIVIDE ( [Routine (card)], [Total requests] ), "0%" ) & " routine"
+		displayFolder: Text
+
+	/// Created in the 30 days up to the as-of date.
+	measure 'Received last 30 days' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Received last 30 days] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Performance
+
+	measure 'Received last 30 days (card)' = COALESCE ( [Received last 30 days], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// In progress (not completed, discontinued or unassigned) and not past the expected completion date.
+	measure 'Active & on track' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[On track] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Performance
+
+	measure 'Active & on track (card)' = COALESCE ( [Active & on track], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Reached 100%.
+	measure Completed =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Status] = "100%" )
+			)
+		formatString: #,0
+		displayFolder: Performance
+
+	measure 'Completed (card)' = COALESCE ( [Completed], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Not completed or discontinued, and past the expected completion date. Includes unassigned requests: an unassigned request past its target is the worst kind of overdue.
+	measure Overdue =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Is overdue] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Performance
+
+	measure 'Overdue (card)' = COALESCE ( [Overdue], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	measure 'Total requests sub' = "TA requests · country offices"
+		displayFolder: Text
+
+	measure 'Received last 30 days sub' = FORMAT ( DIVIDE ( [Received last 30 days (card)], [Total requests] ), "0%" ) & " of all requests · new since " & FORMAT ( [As of] - 30, "d mmm yyyy" )
+		displayFolder: Text
+
+	measure 'Active & on track sub' = FORMAT ( DIVIDE ( [Active & on track (card)], [Total requests] ), "0%" ) & " of all requests · in progress, not overdue"
+		displayFolder: Text
+
+	measure 'Completed sub' = FORMAT ( DIVIDE ( [Completed (card)], [Total requests] ), "0%" ) & " of all requests reached 100%"
+		displayFolder: Text
+
+	measure 'Overdue sub' = FORMAT ( DIVIDE ( [Overdue (card)], [Total requests] ), "0%" ) & " of all requests · past target date"
+		displayFolder: Text
+
+	/// The metric picked in "Where the work stands".
+	measure 'Selected metric' =
+			SWITCH (
+			    SELECTEDVALUE ( 'Portfolio metric'[Metric], "Overdue" ),
+			    "Received last 30 days", [Received last 30 days],
+			    "Active & on track", [Active & on track],
+			    "Completed", [Completed],
+			    "Overdue", [Overdue]
+			)
+		formatString: #,0
+		displayFolder: Performance
+
+	/// What share of the practice's own requests the picked metric represents.
+	measure 'Selected metric share of practice' = DIVIDE ( [Selected metric], [Total requests] )
+		formatString: 0%
+		displayFolder: Performance
+
+	measure 'Selected metric title' = SELECTEDVALUE ( 'Portfolio metric'[Metric], "Overdue" ) & " — by practice"
+		displayFolder: Text
+
+	measure 'Coverage note' =
+			VAR total = [Total requests (card)]
+			VAR covered = [Active & on track (card)] + [Overdue (card)] + [Completed (card)]
+			VAR rest = total - covered
+			RETURN
+			    IF (
+			        rest > 0,
+			        "On track, Overdue and Completed are mutually exclusive and together cover " & FORMAT ( covered, "#,0" )
+			            & " of " & FORMAT ( total, "#,0" ) & " requests; the remaining " & FORMAT ( rest, "#,0" )
+			            & " are unassigned and not yet past their target date, so they are still in review rather than active.",
+			        "On track, Overdue and Completed are mutually exclusive and together cover the whole portfolio."
+			    )
+		displayFolder: Text
+
+	/// Requests opened in the month on the axis (uses the Opened month relationship).
+	measure 'Opened in month' = COUNTROWS ( Requests )
+		formatString: #,0
+		displayFolder: Performance
+
+	/// Requests that reached 100% and were closed (or resolved) in the month on the axis.
+	measure 'Completed in month' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    USERELATIONSHIP ( Requests[Completed month], DimMonth[Month] )
+			)
+		formatString: #,0
+		displayFolder: Performance
+
+	measure 'Opened vs completed note' =
+			"Opened " & FORMAT ( SUMX ( DimMonth, [Opened in month] ) + 0, "#,0" )
+			    & "  ·  Completed " & FORMAT ( SUMX ( DimMonth, [Completed in month] ) + 0, "#,0" )
+			    & "  (April – " & FORMAT ( [As of], "mmm" ) & ")"
+		displayFolder: Text
+
+	measure 'Overdue severity note' =
+			VAR a = CALCULATE ( [Overdue (card)], Requests[Overdue bucket] = "1–30 days" )
+			VAR b = CALCULATE ( [Overdue (card)], Requests[Overdue bucket] = "31–60 days" )
+			VAR c = CALCULATE ( [Overdue (card)], Requests[Overdue bucket] = ">60 days" )
+			VAR biggest = IF ( a >= b && a >= c, "1–30 days", IF ( b >= c, "31–60 days", ">60 days" ) )
+			VAR n = IF ( a >= b && a >= c, a, IF ( b >= c, b, c ) )
+			RETURN
+			    FORMAT ( [Overdue (card)], "#,0" ) & " requests are past their expected completion date. The largest group is "
+			        & biggest & " late (" & FORMAT ( n, "#,0" ) & "). Anything beyond 60 days needs the expected completion date "
+			        & "reviewed: the original target is no longer credible, so the request should be re-planned, or closed if the work is finished."
+		displayFolder: Text
+
+	/// Distinct TA leads in the current filter.
+	measure 'TA leads' = DISTINCTCOUNTNOBLANK ( Requests[TA lead] )
+		formatString: #,0
+		displayFolder: Performance
+
+	/// Requests (including any without a lead) divided by distinct TA leads, as on the web dashboard.
+	measure 'Requests per lead' = DIVIDE ( [Total requests], [TA leads] )
+		formatString: 0.0
+		displayFolder: Performance
+
+	/// Fewest requests held by one TA lead.
+	measure 'Lead load min' =
+			VAR leads =
+			    ADDCOLUMNS (
+			        FILTER ( VALUES ( Requests[TA lead] ), NOT ISBLANK ( Requests[TA lead] ) ),
+			        "@n", CALCULATE ( COUNTROWS ( Requests ) )
+			    )
+			RETURN MINX ( leads, [@n] )
+		formatString: #,0
+		displayFolder: Performance
+
+	/// Most requests held by one TA lead.
+	measure 'Lead load max' =
+			VAR leads =
+			    ADDCOLUMNS (
+			        FILTER ( VALUES ( Requests[TA lead] ), NOT ISBLANK ( Requests[TA lead] ) ),
+			        "@n", CALCULATE ( COUNTROWS ( Requests ) )
+			    )
+			RETURN MAXX ( leads, [@n] )
+		formatString: #,0
+		displayFolder: Performance
+
+	/// Average requests per TA lead.
+	measure 'Lead load average' =
+			VAR leads =
+			    ADDCOLUMNS (
+			        FILTER ( VALUES ( Requests[TA lead] ), NOT ISBLANK ( Requests[TA lead] ) ),
+			        "@n", CALCULATE ( COUNTROWS ( Requests ) )
+			    )
+			RETURN AVERAGEX ( leads, [@n] )
+		formatString: 0.0
+		displayFolder: Performance
+
+	measure 'Busiest TA lead' =
+			VAR leads =
+			    ADDCOLUMNS (
+			        FILTER ( VALUES ( Requests[TA lead] ), NOT ISBLANK ( Requests[TA lead] ) ),
+			        "@n", CALCULATE ( COUNTROWS ( Requests ) )
+			    )
+			VAR topN = MAXX ( leads, [@n] )
+			RETURN CONCATENATEX ( TOPN ( 1, FILTER ( leads, [@n] = topN ), Requests[TA lead], ASC ), Requests[TA lead] )
+		displayFolder: Performance
+
+	measure 'Leads at minimum' =
+			VAR leads =
+			    ADDCOLUMNS (
+			        FILTER ( VALUES ( Requests[TA lead] ), NOT ISBLANK ( Requests[TA lead] ) ),
+			        "@n", CALCULATE ( COUNTROWS ( Requests ) )
+			    )
+			VAR low = MINX ( leads, [@n] )
+			VAR k = COUNTROWS ( FILTER ( leads, [@n] = low ) )
+			RETURN FORMAT ( k, "#,0" ) & IF ( k = 1, " staff member", " staff members" )
+		displayFolder: Text
+
+	measure 'Workload note' =
+			FORMAT ( [TA leads] + 0, "#,0" ) & " TA leads hold these requests. Fewest: " & FORMAT ( [Lead load min] + 0, "#,0" )
+			    & " (" & [Leads at minimum] & ")  ·  average " & FORMAT ( [Lead load average] + 0, "0.0" )
+			    & "  ·  most: " & FORMAT ( [Lead load max] + 0, "#,0" ) & " (" & [Busiest TA lead] & ")"
+		displayFolder: Text
+
+	/// Unassigned country office requests.
+	measure 'Awaiting assignment' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Status] = "Unassigned" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Awaiting assignment (card)' = COALESCE ( [Awaiting assignment], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// At 0%: being scoped with the country office.
+	measure 'In review (0%)' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Status] = "0%" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'In review (0%) (card)' = COALESCE ( [In review (0%)], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Unassigned or 0%.
+	measure 'In review' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[In review] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'In review (card)' = COALESCE ( [In review], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Unassigned for more than 14 days, or at 0% and not updated in 30.
+	measure 'Stalled in setup' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Stalled] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Stalled in setup (card)' = COALESCE ( [Stalled in setup], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Work has started (25%–75%).
+	measure 'In delivery (25%+)' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Status] IN { "25%", "50%", "75%" } )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'In delivery (25%+) (card)' = COALESCE ( [In delivery (25%+)], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// 25%, 50%, 75% or 100%: completeness checks apply.
+	measure 'Delivery-stage requests' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[In delivery stage] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Delivery-stage requests (card)' = COALESCE ( [Delivery-stage requests], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	measure 'Passing every check' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Passes all checks] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Passing every check (card)' = COALESCE ( [Passing every check], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// 25%+ requests that fail at least one check.
+	measure 'Needing cleanup' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[In delivery stage] = "Yes" ),
+			    KEEPFILTERS ( Requests[Passes all checks] = "No" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Needing cleanup (card)' = COALESCE ( [Needing cleanup], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Share of 25%+ requests passing every check. Never rounds up to 100%: one failing record still shows.
+	measure 'Record quality score' =
+			VAR n = [Passing every check (card)]
+			VAR d = [Delivery-stage requests]
+			RETURN
+			    IF ( d > 0, IF ( n >= d, 1, MIN ( 0.99, ROUND ( DIVIDE ( n, d ) * 100, 0 ) / 100 ) ) )
+		formatString: 0%
+		displayFolder: Data Quality
+
+	measure 'Record quality sub' = FORMAT ( [Passing every check (card)], "#,0" ) & " of " & FORMAT ( [Delivery-stage requests (card)], "#,0" ) & " pass every check"
+		displayFolder: Text
+
+	/// At 0% with a description, a TA lead and a target date.
+	measure 'Ready to advance' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Ready to advance] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Ready to advance (card)' = COALESCE ( [Ready to advance], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	measure 'Ready to advance sub' = "of " & FORMAT ( [In review (0%) (card)], "#,0" ) & " at 0% have a description, a TA lead and a target date"
+		displayFolder: Text
+
+	/// At 0% (past assignment) but no TA lead.
+	measure 'Assigned without TA lead' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Assigned without lead] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Assigned without TA lead (card)' = COALESCE ( [Assigned without TA lead], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Share of 25%+ requests with the field (row of Completeness check) filled. Never rounds up to 100%.
+	measure Completeness =
+			VAR d = [Delivery-stage requests]
+			VAR n =
+			    SWITCH (
+			        SELECTEDVALUE ( 'Completeness check'[Field] ),
+			        "TA lead", CALCULATE ( [Delivery-stage requests], NOT ISBLANK ( Requests[TA lead] ) ),
+			        "Expected completion", CALCULATE ( [Delivery-stage requests], NOT ISBLANK ( Requests[Expected completion] ) ),
+			        "Details/Description", CALCULATE ( [Delivery-stage requests], Requests[Has description] = "Yes" ),
+			        "Modality", CALCULATE ( [Delivery-stage requests], Requests[Modality] <> "" ),
+			        "Programme offer", CALCULATE ( [Delivery-stage requests], Requests[Offer as recorded] <> "" )
+			    ) + 0
+			RETURN
+			    IF ( d > 0, IF ( n >= d, 1, MIN ( 0.99, ROUND ( DIVIDE ( n, d ) * 100, 0 ) / 100 ) ) )
+		formatString: 0%
+		displayFolder: Data Quality
+
+	measure 'Completeness colour' =
+			VAR p = [Completeness]
+			RETURN SWITCH ( TRUE (), p >= 0.95, "#2E7D5B", p >= 0.8, "#3E9CD6", "#E0A21E" )
+		displayFolder: Text
+
+	measure 'No TA lead (25%+)' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[In delivery stage] = "Yes" ),
+			    KEEPFILTERS ( ISBLANK ( Requests[TA lead] ) )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'No TA lead (25%+) (card)' = COALESCE ( [No TA lead (25%+)], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	measure 'No expected completion (25%+)' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[In delivery stage] = "Yes" ),
+			    KEEPFILTERS ( ISBLANK ( Requests[Expected completion] ) )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'No expected completion (25%+) (card)' = COALESCE ( [No expected completion (25%+)], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	measure 'Target before start (25%+)' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[In delivery stage] = "Yes" ),
+			    KEEPFILTERS ( Requests[Target before start] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Target before start (25%+) (card)' = COALESCE ( [Target before start (25%+)], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Descriptions that are placeholder text ("test", "please add a description", "N/A"…) on requests still in play.
+	measure 'Placeholder descriptions' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Placeholder description] = "Yes" ),
+			    KEEPFILTERS ( Requests[Status] <> "Discontinued" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Placeholder descriptions (card)' = COALESCE ( [Placeholder descriptions], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Later requests with the same Requested For and short description as an earlier one.
+	measure 'Possible duplicates' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Possible duplicate] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Possible duplicates (card)' = COALESCE ( [Possible duplicates], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Active requests whose expected completion date falls in the next 30 days.
+	measure 'Due in next 30 days' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Due in next 30 days] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Due in next 30 days (card)' = COALESCE ( [Due in next 30 days], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Completed or discontinued, but with no Closed date.
+	measure 'Should be closed' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( Requests[Not closed] = "Yes" )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Should be closed (card)' = COALESCE ( [Should be closed], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	/// Requests counted once in their lifecycle phase (discontinued excluded).
+	measure 'Requests in phase' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    KEEPFILTERS ( NOT ISBLANK ( Requests[Phase] ) )
+			)
+		formatString: #,0
+		displayFolder: Data Quality
+
+	/// In review (Unassigned or 0%) but already past the expected completion date.
+	measure 'Past target, not started' =
+			VAR d = [As of]
+			RETURN
+			    CALCULATE (
+			        COUNTROWS ( Requests ),
+			        KEEPFILTERS ( Requests[In review] = "Yes" ),
+			        KEEPFILTERS ( Requests[Expected completion] < d )
+			    ) + 0
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Phase note' =
+			"Each request is counted once, in the phase it is in. Overdue here means a request that has started (25%+) and is past "
+			    & "its expected completion date. " & FORMAT ( [Past target, not started], "#,0" ) & " requests are past their target date "
+			    & "but have not started yet — they are counted as in review, which is why this red segment is smaller than the Overdue card above."
+		displayFolder: Text
+
+	/// Requests in the whole export with no country office recorded.
+	measure 'Requests with no office' =
+			CALCULATE (
+			    COUNTROWS ( Requests ),
+			    REMOVEFILTERS ( Requests[Country office request] ),
+			    ISBLANK ( Requests[Office] )
+			) + 0
+		formatString: #,0
+		displayFolder: Data Quality
+
+	measure 'Data quality header' =
+			FORMAT ( [Total requests (card)], "#,0" ) & " country office requests  ·  "
+			    & FORMAT ( [Requests with no office], "#,0" ) & " with no country office recorded (not shown)"
+		displayFolder: Text
+
+	measure 'Stall note' =
+			"Every request still in review, longest wait first. Days waiting = as-of date (" & FORMAT ( [As of], "dd mmm yyyy" )
+			    & ") − last Updated date (for Unassigned, − the date received). Stalled = Unassigned over 14 days, or 0% not updated in 30. "
+			    & "Stage-transition dates are not captured yet, so this is a proxy for time in the current stage."
+		displayFolder: Text
+
+	measure 'Overdue note' =
+			"Days overdue = as-of date (" & FORMAT ( [As of], "dd mmm yyyy" ) & ") − Expected Completion Date. "
+			    & "If this looks too high, the TA lead should update the Expected Completion Date on the request."
+		displayFolder: Text
+
+	measure 'Filter summary' =
+			VAR typ = IF ( ISFILTERED ( DimType[Request type] ), CONCATENATEX ( VALUES ( DimType[Request type] ), DimType[Request type], ", " ) & " requests", "All requests" )
+			VAR reg = IF ( ISFILTERED ( DimOffice[Region] ), CONCATENATEX ( VALUES ( DimOffice[Region] ), DimOffice[Region], ", " ), "all regions" )
+			VAR pra = IF ( ISFILTERED ( DimPractice[Practice] ), "  ·  " & CONCATENATEX ( VALUES ( DimPractice[Practice] ), DimPractice[Practice], ", " ) )
+			VAR off = IF ( ISFILTERED ( DimOffice[Office] ), "  ·  " & CONCATENATEX ( VALUES ( DimOffice[Office] ), DimOffice[Office], ", " ) )
+			VAR ofr = IF ( ISFILTERED ( DimOffer[Programme offer] ), "  ·  " & CONCATENATEX ( VALUES ( DimOffer[Programme offer] ), DimOffer[Programme offer], ", " ) )
+			VAR sts = IF ( ISFILTERED ( Requests[Status] ), "  ·  " & CONCATENATEX ( VALUES ( Requests[Status] ), Requests[Status], ", " ) & " status" )
+			VAR qtr = IF ( ISFILTERED ( Requests[Expected completion quarter] ), "  ·  due " & CONCATENATEX ( VALUES ( Requests[Expected completion quarter] ), Requests[Expected completion quarter], ", " ) )
+			VAR anyFilter = ISFILTERED ( DimType[Request type] ) || ISFILTERED ( DimOffice[Region] ) || ISFILTERED ( DimPractice[Practice] )
+			    || ISFILTERED ( DimOffice[Office] ) || ISFILTERED ( DimOffer[Programme offer] ) || ISFILTERED ( Requests[Status] )
+			    || ISFILTERED ( Requests[Expected completion quarter] )
+			RETURN
+			    IF ( anyFilter, typ & "  ·  " & reg & pra & off & ofr & sts & qtr, "All TA requests — every region, practice & status" )
+		displayFolder: Text
+
+	/// The request number (CSR…).
+	column 'Request ID'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Request ID
+
+	/// The case number (CS…); the survey links on this.
+	column 'Case number'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Case number
+
+	column 'Request type'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Request type
+
+	/// Region decided by the office (Regions & Countries 2026 reference).
+	column Region
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Region
+
+	column Office
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Office
+
+	column 'Office as recorded'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Office as recorded
+
+	column 'Region as recorded'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Region as recorded
+
+	column Practice
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Practice
+
+	column 'Programme offer'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Programme offer
+
+	column 'Offer as recorded'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Offer as recorded
+
+	column Modality
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Modality
+
+	column Language
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Language
+
+	column Status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Status
+		sortByColumn: 'Status order'
+
+	column 'Status order'
+		dataType: int64
+		formatString: 0
+		isHidden
+		summarizeBy: none
+		sourceColumn: Status order
+
+	column 'TA lead'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: TA lead
+
+	column 'Requested for'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Requested for
+
+	column 'Requested by'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Requested by
+
+	column 'Short description'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Short description
+
+	/// Details/Description with the formatting removed; falls back to the short description.
+	column Details
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Details
+
+	column Collaborators
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Collaborators
+
+	column 'Expected start'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Expected start
+
+	column 'Expected completion'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Expected completion
+
+	column Created
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Created
+
+	column Opened
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Opened
+
+	column Updated
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Updated
+
+	column Resolved
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Resolved
+
+	column Closed
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Closed
+
+	column 'Resolution code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Resolution code
+
+	column State
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: State
+
+	column 'Expected completion quarter'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Expected completion quarter
+
+	/// Yes / No: a real description, not placeholder text.
+	column 'Has description'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Has description
+
+	/// Yes / No
+	column 'Placeholder description'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Placeholder description
+
+	/// Yes / No
+	column 'Has objectives'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Has objectives
+
+	/// Yes / No: the office is in one of the six regions. The Data Quality universe.
+	column 'Country office request'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Country office request
+
+	/// Yes / No: a country office request that is not discontinued. The Performance universe.
+	column 'In performance scope'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: In performance scope
+
+	/// Yes / No: not completed or discontinued, and past the expected completion date (includes unassigned).
+	column 'Is overdue'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Is overdue
+
+	column 'Days past target'
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Days past target
+
+	column 'Overdue bucket'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Overdue bucket
+		sortByColumn: 'Overdue bucket order'
+
+	column 'Overdue bucket order'
+		dataType: int64
+		formatString: 0
+		isHidden
+		summarizeBy: none
+		sourceColumn: Overdue bucket order
+
+	/// Yes / No: in progress (25%–75% or 0%), i.e. not completed, discontinued or unassigned.
+	column 'Is active'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Is active
+
+	/// Yes / No: active and not past the expected completion date.
+	column 'On track'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: On track
+
+	/// Yes / No: created in the 30 days up to the as-of date.
+	column 'Received last 30 days'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Received last 30 days
+
+	column 'Days since received'
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Days since received
+
+	column 'Opened month'
+		dataType: dateTime
+		formatString: mmm yyyy
+		isHidden
+		summarizeBy: none
+		sourceColumn: Opened month
+
+	column 'Completed month'
+		dataType: dateTime
+		formatString: mmm yyyy
+		isHidden
+		summarizeBy: none
+		sourceColumn: Completed month
+
+	/// Yes / No: Unassigned or 0%.
+	column 'In review'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: In review
+
+	/// In review only: days since the last update (Unassigned: since received).
+	column 'Days waiting'
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Days waiting
+
+	/// Yes / No: Unassigned over 14 days, or 0% not updated in 30.
+	column Stalled
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Stalled
+
+	column 'Time in setup'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Time in setup
+		sortByColumn: 'Time in setup order'
+
+	column 'Time in setup order'
+		dataType: int64
+		formatString: 0
+		isHidden
+		summarizeBy: none
+		sourceColumn: Time in setup order
+
+	/// Yes / No: 0% with a description, a TA lead and a target date.
+	column 'Ready to advance'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Ready to advance
+
+	/// Yes / No: 0% (past assignment) but no TA lead.
+	column 'Assigned without lead'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Assigned without lead
+
+	/// Yes / No: 25%, 50%, 75% or 100%.
+	column 'In delivery stage'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: In delivery stage
+
+	/// Yes / No: in delivery with lead, target date, description, modality and offer, and target not before start.
+	column 'Passes all checks'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Passes all checks
+
+	/// In delivery: the first check the record fails.
+	column 'Data issue'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Data issue
+
+	/// Yes / No
+	column 'Target before start'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Target before start
+
+	/// Yes / No: active, with the expected completion date in the next 30 days.
+	column 'Due in next 30 days'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Due in next 30 days
+
+	/// Yes / No: completed or discontinued but no Closed date.
+	column 'Not closed'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Not closed
+
+	column 'Not closed reason'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Not closed reason
+
+	/// In review / Started & in delivery / Overdue (each request once; discontinued excluded).
+	column Phase
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Phase
+		sortByColumn: 'Phase order'
+
+	column 'Phase order'
+		dataType: int64
+		formatString: 0
+		isHidden
+		summarizeBy: none
+		sourceColumn: Phase order
+
+	/// In review: days waiting. Overdue: days past target. In delivery: the target date.
+	column 'Phase detail'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Phase detail
+
+	column Urgency
+		dataType: double
+		isHidden
+		summarizeBy: none
+		sourceColumn: Urgency
+
+	/// Yes / No: a later country office request with the same Requested For and short description.
+	column 'Possible duplicate'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Possible duplicate
+
+	column 'Source order'
+		dataType: int64
+		formatString: 0
+		isHidden
+		summarizeBy: none
+		sourceColumn: Source order
+
+	partition Requests = m
+		mode: import
+		source =
+				// One row per TA request: the source cleaned and normalised exactly as the web
+				// dashboard does it (scripts/extract.py + app/src/data/cases.ts + lib/dashboard.ts),
+				// with every per-request flag the measures need computed once here.
+				let
+				    Today = Number.From(AsOf),
+				    Round = (x as nullable number) as nullable number => if x = null then null else Number.RoundDown(x + 0.5),
+				    Num = (d as nullable datetime) as nullable number => if d = null then null else Number.From(d),
+				    YN = (b as logical) as text => if b then "Yes" else "No",
+				    Fmt = (d as nullable datetime) as text => if d = null then "—" else DateTime.ToText(d, [Format = "dd MMM yyyy", Culture = "en-GB"]),
+				    MonthOf = (d as nullable datetime) as nullable date => if d <> null and Date.Year(d) = 2026 then #date(2026, Date.Month(d), 1) else null,
+				    RealRegions = {"ESAR", "APR", "WCAR", "LACR", "ECAR", "MENAR"},
+
+				    Kept = Table.SelectRows(RawRequestsAll, each not List.Contains(ExcludedResolutions, [Resolution code])),
+				    // the export's own Region is unreliable; the office decides the region (fnMapOffices)
+				    KeptRenamed = Table.RenameColumns(Kept, {{"Region", "Region as recorded"}}),
+				    WithPlace = fnMapOffices(KeptRenamed, "Office/Division"),
+				    Indexed = Table.AddIndexColumn(WithPlace, "Source order", 0, 1, Int64.Type),
+
+				    Calc = Table.AddColumn(Indexed, "c", (r) =>
+				        let
+				            Status = r[Implementation Status],
+				            Lead = r[Assigned to],
+				            Xs = Num(r[Expected Start Date]),
+				            Xc = Num(r[Expected Completion Date]),
+				            Received = if r[Created] <> null then r[Created] else r[Opened],
+				            Details = fnCleanHtml(r[#"Details/Description"]),
+				            Placeholder = fnIsPlaceholder(Details),
+				            HasDesc = not Placeholder,
+				            IsCO = List.Contains(RealRegions, r[Region]),
+				            Closedish = List.Contains({"100%", "Discontinued"}, Status),
+				            PastTarget = Xc <> null and Xc < Today,
+				            Overdue = not Closedish and PastTarget,
+				            DaysLate = if Xc = null then null else Today - Xc,
+				            Active = not List.Contains({"100%", "Discontinued", "Unassigned"}, Status),
+				            InReview = List.Contains({"Unassigned", "0%"}, Status),
+				            WaitFrom = if Status = "Unassigned" then Received else (if r[Updated] <> null then r[Updated] else Received),
+				            Waiting = if WaitFrom = null then null else Round(Today - Num(WaitFrom)),
+				            Stalled = InReview and Waiting <> null and (if Status = "Unassigned" then Waiting > 14 else Waiting > 30),
+				            Delivery = List.Contains({"25%", "50%", "75%", "100%"}, Status),
+				            BeforeStart = Xc <> null and Xs <> null and Xc < Xs,
+				            Issue =
+				                if Lead = "" then "no TA lead"
+				                else if Xc = null then "no target date"
+				                else if not HasDesc then "no details/description"
+				                else if r[Modality] = "" then "no modality"
+				                else if r[Primary Programme Offer] = "" then "no offer"
+				                else if BeforeStart then "target before start"
+				                else null,
+				            Phase =
+				                if Status = "Discontinued" then null
+				                else if InReview then "In review"
+				                else if Status <> "100%" and PastTarget then "Overdue"
+				                else "Started & in delivery",
+				            Done = if r[Closed] <> null then r[Closed] else r[Resolved]
+				        in
+				            [
+				                Request type = fnMapType(r[Request Type]),
+				                Practice = fnMapPractice(r[Global Practice and Cross Sectoral Teams]),
+				                Programme offer = fnMapOffer(r[Primary Programme Offer]),
+				                Details = if Details <> "" then Details else r[Short description],
+				                Has description = YN(HasDesc),
+				                Placeholder description = YN(Placeholder),
+				                Has objectives = YN(r[Objectives] <> ""),
+				                Status order = List.PositionOf({"0%", "25%", "50%", "75%", "100%", "Unassigned", "Discontinued"}, Status) + 1,
+				                Expected completion quarter = if Xc = null then null else Text.From(Date.Year(r[Expected Completion Date])) & " Q" & Text.From(Date.QuarterOfYear(r[Expected Completion Date])),
+				                Country office request = YN(IsCO),
+				                In performance scope = YN(IsCO and Status <> "Discontinued"),
+				                Is overdue = YN(Overdue),
+				                Days past target = if Overdue then Round(DaysLate) else null,
+				                Overdue bucket = if not Overdue then null else if DaysLate <= 30 then "1–30 days" else if DaysLate <= 60 then "31–60 days" else ">60 days",
+				                Overdue bucket order = if not Overdue then null else if DaysLate <= 30 then 1 else if DaysLate <= 60 then 2 else 3,
+				                Is active = YN(Active),
+				                On track = YN(Active and not PastTarget),
+				                Received last 30 days = YN(Received <> null and Num(Received) >= Today - 30 and Num(Received) <= Today),
+				                Days since received = if Received = null then null else Round(Today - Num(Received)),
+				                Opened month = MonthOf(r[Opened]),
+				                Completed month = if Status = "100%" then MonthOf(Done) else null,
+				                In review = YN(InReview),
+				                Days waiting = if InReview then Waiting else null,
+				                Stalled = YN(Stalled),
+				                Time in setup = if not InReview or Waiting = null then null else if Waiting <= 14 then "0–14 days" else if Waiting <= 30 then "15–30 days" else "30+ days",
+				                Time in setup order = if not InReview or Waiting = null then null else if Waiting <= 14 then 1 else if Waiting <= 30 then 2 else 3,
+				                Ready to advance = YN(Status = "0%" and HasDesc and Lead <> "" and Xc <> null),
+				                Assigned without lead = YN(Status = "0%" and Lead = ""),
+				                In delivery stage = YN(Delivery),
+				                Passes all checks = YN(Delivery and Issue = null),
+				                Data issue = if Delivery then Issue else null,
+				                Target before start = YN(BeforeStart),
+				                Due in next 30 days = YN(not Closedish and Xc <> null and Xc >= Today and Xc <= Today + 30),
+				                Not closed = YN(Closedish and r[Closed] = null),
+				                Not closed reason = if Closedish and r[Closed] = null then (if Status = "100%" then "completed" else "discontinued") else null,
+				                Phase = Phase,
+				                Phase order = if Phase = "In review" then 1 else if Phase = "Started & in delivery" then 2 else if Phase = "Overdue" then 3 else null,
+				                Phase detail =
+				                    if Phase = "In review" then (if Waiting = null then "—" else Text.From(Waiting) & "d")
+				                    else if Phase = "Overdue" then "+" & Text.From(Round(DaysLate)) & "d"
+				                    else if Phase = null then null
+				                    else Fmt(r[Expected Completion Date]),
+				                Urgency = if InReview then Waiting else if Xc = null then -1000000 else Today - Xc
+				            ]
+				    ),
+				    Expanded = Table.ExpandRecordColumn(Calc, "c", {
+				        "Request type", "Practice", "Programme offer", "Details", "Has description", "Placeholder description",
+				        "Has objectives", "Status order", "Expected completion quarter", "Country office request", "In performance scope",
+				        "Is overdue", "Days past target", "Overdue bucket", "Overdue bucket order", "Is active", "On track",
+				        "Received last 30 days", "Days since received", "Opened month", "Completed month", "In review", "Days waiting",
+				        "Stalled", "Time in setup", "Time in setup order", "Ready to advance", "Assigned without lead", "In delivery stage",
+				        "Passes all checks", "Data issue", "Target before start", "Due in next 30 days", "Not closed", "Not closed reason",
+				        "Phase", "Phase order", "Phase detail", "Urgency"}, null),
+
+				    // Possible duplicates: among country office requests, a later request with the same
+				    // "Requested For" and short description as an earlier one (dashboard.ts dupCount).
+				    DupKeyed = Table.AddColumn(Expanded, "__dup", each
+				        if [Country office request] = "Yes" and [Requested For] <> "" and [Short description] <> ""
+				        then Text.Lower([Requested For] & "|" & [Short description]) else null, type nullable text),
+				    FirstSeen = Table.Group(Table.SelectRows(DupKeyed, each [__dup] <> null), {"__dup"}, {{"__first", each List.Min([Source order]), Int64.Type}}),
+				    DupJoined = Table.NestedJoin(DupKeyed, {"__dup"}, FirstSeen, {"__dup"}, "__f", JoinKind.LeftOuter),
+				    DupFlag = Table.AddColumn(Table.ExpandTableColumn(DupJoined, "__f", {"__first"}), "Possible duplicate",
+				        each if [__dup] <> null and [__first] <> null and [Source order] > [__first] then "Yes" else "No", type text),
+
+				    Renamed = Table.RenameColumns(DupFlag, {
+				        {"Number", "Case number"}, {"Implementation Status", "Status"}, {"Assigned to", "TA lead"},
+				        {"Requested For", "Requested for"}, {"Office/Division", "Office as recorded"},
+				        {"Primary Programme Offer", "Offer as recorded"},
+				        {"Expected Start Date", "Expected start"}, {"Expected Completion Date", "Expected completion"}}),
+				    Selected = Table.SelectColumns(Renamed, {
+				        "Request ID", "Case number", "Request type", "Region", "Office", "Office as recorded", "Region as recorded", "Practice",
+				        "Programme offer", "Offer as recorded", "Modality", "Language", "Status", "Status order", "TA lead",
+				        "Requested for", "Requested by", "Short description", "Details", "Collaborators",
+				        "Expected start", "Expected completion", "Created", "Opened", "Updated", "Resolved", "Closed",
+				        "Resolution code", "State", "Expected completion quarter", "Has description", "Placeholder description",
+				        "Has objectives", "Country office request", "In performance scope", "Is overdue", "Days past target",
+				        "Overdue bucket", "Overdue bucket order", "Is active", "On track", "Received last 30 days",
+				        "Days since received", "Opened month", "Completed month", "In review", "Days waiting", "Stalled",
+				        "Time in setup", "Time in setup order", "Ready to advance", "Assigned without lead", "In delivery stage",
+				        "Passes all checks", "Data issue", "Target before start", "Due in next 30 days", "Not closed",
+				        "Not closed reason", "Phase", "Phase order", "Phase detail", "Urgency", "Possible duplicate", "Source order"}),
+				    // blanks become nulls on the columns that link to the slicer tables
+				    Keys = Table.TransformColumns(Selected, List.Transform({"Request type", "Office", "Practice", "Programme offer", "TA lead"},
+				        (c) => {c, each if _ = "" then null else _, type nullable text})),
+				    Typed = Table.TransformColumnTypes(Keys, {
+				        {"Status order", Int64.Type}, {"Days past target", Int64.Type}, {"Overdue bucket order", Int64.Type},
+				        {"Days since received", Int64.Type}, {"Opened month", type date}, {"Completed month", type date},
+				        {"Days waiting", Int64.Type}, {"Time in setup order", Int64.Type}, {"Phase order", Int64.Type},
+				        {"Urgency", type number}, {"Source order", Int64.Type}})
+				in
+				    Typed

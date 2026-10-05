@@ -1,0 +1,695 @@
+/// Where the request data comes from.
+expression DataSource = "Excel export" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true, List={"ServiceNow API", "Excel export"}, DefaultValue="Excel export"]
+	queryGroup: Parameters
+
+	annotation PBI_ResultType = Text
+
+/// Base URL of the ServiceNow instance.
+expression ServiceNowInstance = "https://YOUR-INSTANCE.service-now.com" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	queryGroup: Parameters
+
+	annotation PBI_ResultType = Text
+
+/// Table the TA cases live in.
+expression ServiceNowTable = "sn_customerservice_case" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	queryGroup: Parameters
+
+	annotation PBI_ResultType = Text
+
+/// Optional encoded query (the filter of your "Case Report"), e.g. active=true^... Leave blank for every case.
+expression ServiceNowQuery = "" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=false]
+	queryGroup: Parameters
+
+	annotation PBI_ResultType = Text
+
+/// The ServiceNow Excel export: a local path or a SharePoint/OneDrive file URL. Used when DataSource = "Excel export".
+expression ExcelExportPath = "C:\REACH\sn_customerservice_case.xlsx" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	queryGroup: Parameters
+
+	annotation PBI_ResultType = Text
+
+/// The survey analysis workbook: a local path or a SharePoint/OneDrive file URL.
+expression SurveyWorkbookPath = "C:\REACH\REACH_TA_Survey_Analysis_FINAL.xlsx" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	queryGroup: Parameters
+
+	annotation PBI_ResultType = Text
+
+expression fnReadFile =
+		// A local path or a SharePoint/OneDrive URL -> file contents.
+		(path as text) as binary =>
+		if Text.StartsWith(Text.Lower(path), "http") then Web.Contents(path) else File.Contents(path)
+	queryGroup: Functions
+
+expression fnText =
+		// Cell -> trimmed text with inner whitespace collapsed; "" for blanks.
+		(v as any) as text =>
+		if v = null then "" else Text.Combine(List.Select(Text.SplitAny(Text.From(v), " #(tab)#(lf)#(cr)#(00A0)"), each _ <> ""), " ")
+	queryGroup: Functions
+
+expression fnToDateTime =
+		// Any cell value -> datetime or null. Excel cells arrive as datetimes; the
+		// ServiceNow API returns "yyyy-MM-dd HH:mm:ss" (UTC) or "yyyy-MM-dd".
+		(v as any) as nullable datetime =>
+		if v = null or v = "" then null
+		else if Value.Is(v, type datetime) then v
+		else if Value.Is(v, type date) then DateTime.From(v)
+		else if Value.Is(v, type number) then DateTime.From(v)
+		else
+		    let
+		        T = Text.Trim(Text.From(v)),
+		        Parsed =
+		            if Text.Length(T) = 19 then try DateTime.FromText(T, [Format = "yyyy-MM-dd HH:mm:ss", Culture = "en-US"]) otherwise null
+		            else if Text.Length(T) = 10 then try DateTime.From(Date.FromText(T, [Format = "yyyy-MM-dd", Culture = "en-US"])) otherwise null
+		            else try DateTime.FromText(T, [Culture = "en-US"]) otherwise null
+		    in
+		        Parsed
+	queryGroup: Functions
+
+expression fnCleanHtml =
+		// Details/Description is rich text: every tag becomes a space, common entities
+		// are decoded, whitespace collapses. Port of clean_html() in scripts/extract.py.
+		(v as nullable any) as text =>
+		if v = null then "" else
+		let
+		    S = Text.From(v),
+		    Parts = Text.Split(S, "<"),
+		    NoTags = List.First(Parts) & Text.Combine(List.Transform(List.Skip(Parts, 1), each " " & Text.AfterDelimiter(_, ">")), ""),
+		    Entities = {{"&nbsp;", " "}, {"&#160;", " "}, {"&lt;", "<"}, {"&gt;", ">"}, {"&quot;", """"}, {"&#39;", "'"}, {"&apos;", "'"}, {"&rsquo;", "’"}, {"&lsquo;", "‘"}, {"&rdquo;", "”"}, {"&ldquo;", "“"}, {"&ndash;", "–"}, {"&mdash;", "—"}, {"&amp;", "&"}},
+		    Decoded = List.Accumulate(Entities, NoTags, (s, e) => Text.Replace(s, e{0}, e{1})),
+		    Collapsed = Text.Combine(List.Select(Text.SplitAny(Decoded, " #(tab)#(lf)#(cr)#(00A0)"), each _ <> ""), " ")
+		in
+		    Collapsed
+	queryGroup: Functions
+
+expression fnIsPlaceholder =
+		// True when a description says nothing ("", "test", "n/a", "please add a description…").
+		// Port of is_placeholder() in scripts/extract.py.
+		(t as nullable text) as logical =>
+		let
+		    N = Text.Trim(Text.TrimEnd(Text.Trim(Text.Lower(if t = null then "" else t)), {".", "!", ":", ";", ","})),
+		    Exact = {"", "na", "n/a", "n.a.", "n", "nil", "none", "undefined", "missing", "tbd", "tba", "test", "testing", "tests", ".", "-", "--", "...", "x", "xx", "xxx", "?", "pending"},
+		    Prefixes = {"please add", "add description", "add decription", "add descripton", "please provide more", "to be added", "to be defined", "to be confirmed", "description to follow", "test ", "testing "}
+		in
+		    List.Contains(Exact, N) or List.AnyTrue(List.Transform(Prefixes, (p) => Text.StartsWith(N, p)))
+	queryGroup: Functions
+
+expression fnNormOffice =
+		// Office name -> matching key. Port of norm() in app/src/lib/regionMap.ts:
+		// lower-case, drop "( … )", turn . , ' - into spaces, drop filler words
+		// (the, of, and, rep, republic, dem, state, united, people s, peoples, island s),
+		// collapse spaces.
+		(raw as nullable any) as text =>
+		let
+		    Lower = Text.Lower(if raw = null then "" else Text.From(raw)),
+		    NoParens = List.Accumulate(
+		        Text.ToList(Lower),
+		        [Out = "", Depth = 0],
+		        (s, c) =>
+		            if c = "(" then [Out = s[Out], Depth = s[Depth] + 1]
+		            else if c = ")" and s[Depth] > 0 then [Out = s[Out] & " ", Depth = s[Depth] - 1]
+		            else if s[Depth] > 0 then s
+		            else [Out = s[Out] & c, Depth = s[Depth]]
+		    )[Out],
+		    Spaced = Text.Combine(List.Transform(Text.ToList(NoParens), each if List.Contains({".", ",", "'", "-"}, _) then " " else _)),
+		    Tokens = List.Select(Text.SplitAny(Spaced, " #(tab)#(lf)#(cr)#(00A0)"), each _ <> ""),
+		    Filler = {"the", "of", "and", "rep", "republic", "dem", "state", "united", "peoples"},
+		    N = List.Count(Tokens),
+		    Kept = List.Transform(
+		        List.Numbers(0, N),
+		        (i) =>
+		            let
+		                Tok = Tokens{i},
+		                Prev = if i > 0 then Tokens{i - 1} else "",
+		                Next = if i < N - 1 then Tokens{i + 1} else ""
+		            in
+		                if List.Contains(Filler, Tok) then null
+		                else if Tok = "people" and Next = "s" then null
+		                else if Tok = "island" then null
+		                else if Tok = "s" and (Prev = "people" or Prev = "island") then null
+		                else Tok
+		    )
+		in
+		    Text.Combine(List.RemoveNulls(Kept), " ")
+	queryGroup: Functions
+
+expression fnMapOffices =
+		// Adds canonical [Office] and [Region] to a table from its raw office column.
+		// Port of mapOffice(): known offices get the reference name and region; a few
+		// HQ divisions get a readable name and region "HQ"; anything else keeps its
+		// own name and falls into region "Unmapped".
+		(t as table, rawColumn as text) as table =>
+		let
+		    Distinct = List.Distinct(List.Transform(Table.Column(t, rawColumn), each if _ = null then "" else Text.Trim(Text.From(_)))),
+		    Mapped = Table.FromRecords(List.Transform(Distinct, (raw) =>
+		        let
+		            Hq = List.PositionOf(HqOffices[Raw], raw),
+		            Key = fnNormOffice(raw),
+		            Hit = List.PositionOf(OfficeLookup[Key], Key)
+		        in
+		            if Hq >= 0 then [Raw = raw, Office = HqOffices[Office]{Hq}, Region = "HQ"]
+		            else if Hit >= 0 then [Raw = raw, Office = OfficeLookup[Office]{Hit}, Region = OfficeLookup[Region]{Hit}]
+		            else [Raw = raw, Office = raw, Region = "Unmapped"]
+		    ), type table [Raw = text, Office = text, Region = text]),
+		    WithKey = Table.AddColumn(t, "__raw", each let v = Record.Field(_, rawColumn) in if v = null then "" else Text.Trim(Text.From(v)), type text),
+		    Joined = Table.NestedJoin(WithKey, {"__raw"}, Mapped, {"Raw"}, "__map", JoinKind.LeftOuter),
+		    Expanded = Table.ExpandTableColumn(Joined, "__map", {"Office", "Region"}, {"Office", "Region"})
+		in
+		    Table.RemoveColumns(Expanded, {"__raw"})
+	queryGroup: Functions
+
+expression fnMapOffer =
+		// Canonical programme offer. Port of mapOffer() in app/src/lib/offerMap.ts:
+		// non-breaking spaces and hyphens become spaces, lower-case, collapse spaces,
+		// then look up; unrecognised values pass through trimmed.
+		(raw as nullable any) as text =>
+		let
+		    S = if raw = null then "" else Text.From(raw),
+		    Key = Text.Combine(List.Select(Text.SplitAny(Text.Lower(Text.Replace(Text.Replace(S, "#(00A0)", " "), "-", " ")), " #(tab)#(lf)#(cr)"), each _ <> ""), " "),
+		    Pos = List.PositionOf(OfferLookup[Key], Key)
+		in
+		    if Pos >= 0 then OfferLookup[Offer]{Pos} else Text.Trim(S)
+	queryGroup: Functions
+
+expression fnMapPractice =
+		// Port of mapPractice(): "Other" and "Innovation" fold into Programme Policy & Strategy.
+		(raw as nullable any) as text =>
+		let
+		    S = if raw = null then "" else Text.From(raw),
+		    Key = Text.Combine(List.Select(Text.SplitAny(Text.Lower(Text.Trim(S)), " #(tab)#(lf)#(cr)#(00A0)"), each _ <> ""), " ")
+		in
+		    if List.Contains({"other", "innovation"}, Key) then "Programme Policy & Strategy" else Text.Trim(S)
+	queryGroup: Functions
+
+expression fnMapType =
+		// Port of mapType(): both vocabularies the source has used fold onto Big Ticket / Routine.
+		(raw as nullable any) as text =>
+		let
+		    S = if raw = null then "" else Text.From(raw),
+		    Key = Text.Combine(List.Select(Text.SplitAny(Text.Lower(Text.Trim(S)), " #(tab)#(lf)#(cr)#(00A0)"), each _ <> ""), " ")
+		in
+		    if List.Contains({"big ticket", "big ticket item", "big-ticket"}, Key) then "Big Ticket"
+		    else if List.Contains({"routine", "regular"}, Key) then "Routine"
+		    else Text.Trim(S)
+	queryGroup: Functions
+
+expression fnSurveySheet =
+		// A sheet of the survey analysis workbook as a table, finding the header row under
+		// the sheet's title block (the first row with more than four filled cells).
+		(book as table, name as text) as table =>
+		let
+		    Data = Table.SelectRows(book, each [Kind] = "Sheet" and [Item] = name){0}[Data],
+		    Rows = Table.ToRows(Data),
+		    Filled = (row as list) as number => List.Count(List.Select(row, each _ <> null and _ <> "")),
+		    HeaderAt = List.PositionOf(List.Transform(Rows, each Filled(_) > 4), true),
+		    RawHeader = List.Transform(Rows{HeaderAt}, each if _ = null then "" else Text.Trim(Text.From(_))),
+		    Header = List.Transform(List.Positions(RawHeader), each if RawHeader{_} = "" then "Column" & Text.From(_ + 1) else RawHeader{_}),
+		    Body = List.Select(List.Skip(Rows, HeaderAt + 1), each Filled(_) > 0)
+		in
+		    Table.FromRows(Body, Header)
+	queryGroup: Functions
+
+expression RegionReference =
+		// "Regions & Countries 2026" reference plus aliases (generated from
+		// app/src/data/regionSource.json and app/src/lib/regionMap.ts).
+		#table(type table [Name = text, Office = text, Region = text],
+		    {
+		        {"Afghanistan", "Afghanistan", "APR"},
+		        {"APRO, Thailand", "APRO, Thailand", "APR"},
+		        {"Bangladesh", "Bangladesh", "APR"},
+		        {"Bhutan", "Bhutan", "APR"},
+		        {"Cambodia", "Cambodia", "APR"},
+		        {"China", "China", "APR"},
+		        {"DP Republic of Korea", "DP Republic of Korea", "APR"},
+		        {"Fiji (Pacific Islands)", "Fiji (Pacific Islands)", "APR"},
+		        {"India", "India", "APR"},
+		        {"Indonesia", "Indonesia", "APR"},
+		        {"Lao People's Dem Rep.", "Lao People's Dem Rep.", "APR"},
+		        {"Malaysia", "Malaysia", "APR"},
+		        {"Maldives", "Maldives", "APR"},
+		        {"Mongolia", "Mongolia", "APR"},
+		        {"Myanmar", "Myanmar", "APR"},
+		        {"Nepal", "Nepal", "APR"},
+		        {"Pakistan", "Pakistan", "APR"},
+		        {"Papua New Guinea", "Papua New Guinea", "APR"},
+		        {"Philippines", "Philippines", "APR"},
+		        {"Sri Lanka", "Sri Lanka", "APR"},
+		        {"Thailand", "Thailand", "APR"},
+		        {"Timor-Leste", "Timor-Leste", "APR"},
+		        {"Vietnam", "Vietnam", "APR"},
+		        {"Albania", "Albania", "ECAR"},
+		        {"Armenia", "Armenia", "ECAR"},
+		        {"Belarus", "Belarus", "ECAR"},
+		        {"Bosnia and Herzegovina", "Bosnia and Herzegovina", "ECAR"},
+		        {"Bulgaria", "Bulgaria", "ECAR"},
+		        {"Croatia", "Croatia", "ECAR"},
+		        {"ECARO, Switzerland", "ECARO, Switzerland", "ECAR"},
+		        {"Georgia", "Georgia", "ECAR"},
+		        {"Greece", "Greece", "ECAR"},
+		        {"Kazakhstan", "Kazakhstan", "ECAR"},
+		        {"Kosovo (UN SC resolution 1244)", "Kosovo (UN SC resolution 1244)", "ECAR"},
+		        {"Moldova", "Moldova", "ECAR"},
+		        {"North Macedonia", "North Macedonia", "ECAR"},
+		        {"Poland", "Poland", "ECAR"},
+		        {"Rep of Uzbekistan", "Rep of Uzbekistan", "ECAR"},
+		        {"Republic of Kyrgyzstan", "Republic of Kyrgyzstan", "ECAR"},
+		        {"Republic of Montenegro", "Republic of Montenegro", "ECAR"},
+		        {"Romania", "Romania", "ECAR"},
+		        {"Serbia", "Serbia", "ECAR"},
+		        {"Tajikistan", "Tajikistan", "ECAR"},
+		        {"Türkiye", "Türkiye", "ECAR"},
+		        {"Turkmenistan", "Turkmenistan", "ECAR"},
+		        {"Ukraine", "Ukraine", "ECAR"},
+		        {"Angola", "Angola", "ESAR"},
+		        {"Botswana", "Botswana", "ESAR"},
+		        {"Burundi", "Burundi", "ESAR"},
+		        {"Comoros", "Comoros", "ESAR"},
+		        {"Djibouti", "Djibouti", "ESAR"},
+		        {"Eritrea", "Eritrea", "ESAR"},
+		        {"Ethiopia", "Ethiopia", "ESAR"},
+		        {"Kenya", "Kenya", "ESAR"},
+		        {"Lesotho", "Lesotho", "ESAR"},
+		        {"Madagascar", "Madagascar", "ESAR"},
+		        {"Malawi", "Malawi", "ESAR"},
+		        {"Namibia", "Namibia", "ESAR"},
+		        {"Republic of Mozambique", "Republic of Mozambique", "ESAR"},
+		        {"Rwanda", "Rwanda", "ESAR"},
+		        {"Somalia", "Somalia", "ESAR"},
+		        {"South Africa", "South Africa", "ESAR"},
+		        {"South Sudan", "South Sudan", "ESAR"},
+		        {"Sudan", "Sudan", "ESAR"},
+		        {"United Rep. of Tanzania", "United Rep. of Tanzania", "ESAR"},
+		        {"Zambia", "Zambia", "ESAR"},
+		        {"Zimbabwe", "Zimbabwe", "ESAR"},
+		        {"Office of Innovation", "Office of Innovation", "HQ"},
+		        {"Argentina", "Argentina", "LACR"},
+		        {"Barbados", "Barbados", "LACR"},
+		        {"Belize", "Belize", "LACR"},
+		        {"Bolivia", "Bolivia", "LACR"},
+		        {"Brazil", "Brazil", "LACR"},
+		        {"Chile", "Chile", "LACR"},
+		        {"Colombia", "Colombia", "LACR"},
+		        {"Costa Rica", "Costa Rica", "LACR"},
+		        {"Cuba", "Cuba", "LACR"},
+		        {"Dominican Republic", "Dominican Republic", "LACR"},
+		        {"Ecuador", "Ecuador", "LACR"},
+		        {"El Salvador", "El Salvador", "LACR"},
+		        {"Guatemala", "Guatemala", "LACR"},
+		        {"Guyana", "Guyana", "LACR"},
+		        {"Haiti", "Haiti", "LACR"},
+		        {"Honduras", "Honduras", "LACR"},
+		        {"Jamaica", "Jamaica", "LACR"},
+		        {"Mexico", "Mexico", "LACR"},
+		        {"Nicaragua", "Nicaragua", "LACR"},
+		        {"Paraguay", "Paraguay", "LACR"},
+		        {"Peru", "Peru", "LACR"},
+		        {"Uruguay", "Uruguay", "LACR"},
+		        {"Venezuela", "Venezuela", "LACR"},
+		        {"Algeria", "Algeria", "MENAR"},
+		        {"Egypt", "Egypt", "MENAR"},
+		        {"Iran", "Iran", "MENAR"},
+		        {"Iraq", "Iraq", "MENAR"},
+		        {"Jordan", "Jordan", "MENAR"},
+		        {"Lebanon", "Lebanon", "MENAR"},
+		        {"Libya", "Libya", "MENAR"},
+		        {"MENARO, Jordan", "MENARO, Jordan", "MENAR"},
+		        {"Morocco", "Morocco", "MENAR"},
+		        {"Palestine, State of", "Palestine, State of", "MENAR"},
+		        {"Syria", "Syria", "MENAR"},
+		        {"Tunisia", "Tunisia", "MENAR"},
+		        {"Yemen", "Yemen", "MENAR"},
+		        {"Benin", "Benin", "WCAR"},
+		        {"Burkina Faso", "Burkina Faso", "WCAR"},
+		        {"Central African Republic", "Central African Republic", "WCAR"},
+		        {"Chad", "Chad", "WCAR"},
+		        {"Congo", "Congo", "WCAR"},
+		        {"Cote D'Ivoire", "Cote D'Ivoire", "WCAR"},
+		        {"Democratic Republic of Congo", "Democratic Republic of Congo", "WCAR"},
+		        {"Equatorial Guinea", "Equatorial Guinea", "WCAR"},
+		        {"Gabon", "Gabon", "WCAR"},
+		        {"Gambia", "Gambia", "WCAR"},
+		        {"Ghana", "Ghana", "WCAR"},
+		        {"Guinea", "Guinea", "WCAR"},
+		        {"Guinea Bissau", "Guinea Bissau", "WCAR"},
+		        {"Liberia", "Liberia", "WCAR"},
+		        {"Mali", "Mali", "WCAR"},
+		        {"Mauritania", "Mauritania", "WCAR"},
+		        {"Niger", "Niger", "WCAR"},
+		        {"Nigeria", "Nigeria", "WCAR"},
+		        {"Republic of Cameroon", "Republic of Cameroon", "WCAR"},
+		        {"Sao Tome & Principe", "Sao Tome & Principe", "WCAR"},
+		        {"Senegal", "Senegal", "WCAR"},
+		        {"Sierra Leone", "Sierra Leone", "WCAR"},
+		        {"Togo", "Togo", "WCAR"},
+		        {"Uganda", "Uganda", "ESAR"},
+		        {"Eswatini", "Eswatini", "ESAR"},
+		        {"Saudi Arabia", "Saudi Arabia", "MENAR"},
+		        {"Oman", "Oman", "MENAR"},
+		        {"Panama", "Panama", "LACR"},
+		        {"Cabo Verde", "Cabo Verde", "WCAR"},
+		        {"DRC", "Democratic Republic of Congo", "WCAR"},
+		        {"Pacific", "Fiji (Pacific Islands)", "APR"},
+		        {"Solomon, Republic of Marshall Islands", "Fiji (Pacific Islands)", "APR"}
+		    })
+	queryGroup: Lookups
+
+expression OfficeLookup =
+		// Matching key -> canonical office and region, from the "Regions & Countries 2026"
+		// reference plus aliases (see RegionReference). Later rows win, as in regionMap.ts.
+		let
+		    Source = RegionReference,
+		    Keyed = Table.AddColumn(Source, "Key", each fnNormOffice([Name]), type text),
+		    Indexed = Table.AddIndexColumn(Keyed, "Order", 0, 1, Int64.Type),
+		    LastWins = Table.Distinct(Table.Sort(Indexed, {{"Order", Order.Descending}}), {"Key"}),
+		    Result = Table.SelectColumns(LastWins, {"Key", "Office", "Region"})
+		in
+		    Result
+	queryGroup: Lookups
+
+expression OfferLookup =
+		// Programme offer variants -> canonical name (generated from app/src/lib/offerMap.ts).
+		#table(type table [Key = text, Offer = text],
+		    {
+		        {"digital and infrastructure", "Digital and Infrastructure"},
+		        {"equity and demand generation", "Equity and Demand Generation"},
+		        {"financing for scale", "Financing for Scale"},
+		        {"humanitarian action and resilience", "Humanitarian Action and Resilience"},
+		        {"humanitarian and resilience", "Humanitarian Action and Resilience"},
+		        {"humantiarian and resilience", "Humanitarian Action and Resilience"},
+		        {"institution building", "Workforce Development and Institution Building"},
+		        {"workforce development and institution building", "Workforce Development and Institution Building"},
+		        {"policy reform and programme design", "Policy Reform  and Programme Design"},
+		        {"policy reform and program design", "Policy Reform  and Programme Design"},
+		        {"programme design for a potential ecm funding", "Policy Reform  and Programme Design"},
+		        {"programme management and scale up", "Programme Management Scale Up Support"},
+		        {"programme management for scale up", "Programme Management Scale Up Support"},
+		        {"programme management scale up", "Programme Management Scale Up Support"},
+		        {"programme management scale up support", "Programme Management Scale Up Support"},
+		        {"programme offer to governments and other stakeholders", "Not specified"},
+		        {"n/a", "Not specified"},
+		        {"", "Not specified"}
+		    })
+	queryGroup: Lookups
+
+expression HqOffices =
+		// HQ divisions that appear as offices: a readable name, filed under region HQ.
+		#table(type table [Raw = text, Office = text],
+		    {
+		        {"Office of Strat & Eviden(OSE)", "Office of Strategy and Evidence (OSE)"}
+		    })
+	queryGroup: Lookups
+
+expression ExcludedResolutions =
+		// Resolution codes for administrative non-work, dropped entirely (scripts/extract.py).
+		{"Voided/Canceled", "Discontinued — did not need to proceed", "Duplicate Issue"}
+	queryGroup: Lookups
+
+expression ManualCoding =
+		// Theme coding for the responses that arrived after the workbook's own coding pass
+		// (generated from scripts/survey_manual_coding.json).
+		#table(type table [ID = text, Positive = text, Improvement = text, Flag = text],
+		    {
+		        {"195", "Technical expertise and quality; Programme impact and usefulness", "", ""},
+		        {"208", "Technical expertise and quality; Timeliness and responsiveness; Programme impact and usefulness", "", ""},
+		        {"209", "", "", "Unable to evaluate assistance"},
+		        {"193", "Collaboration and communication; Tailoring and flexibility; Timeliness and responsiveness", "", ""},
+		        {"192", "Tailoring and flexibility; Timeliness and responsiveness", "", ""},
+		        {"204", "Collaboration and communication; Programme impact and usefulness; Timeliness and responsiveness", "Other improvement", ""},
+		        {"191", "Technical expertise and quality", "Earlier and faster engagement", ""},
+		        {"210", "", "Clearer service guidance", ""},
+		        {"211", "Collaboration and communication; Timeliness and responsiveness; Programme impact and usefulness", "", ""},
+		        {"206", "", "Expertise matching and tailoring", ""},
+		        {"190", "Timeliness and responsiveness; Tailoring and flexibility", "", ""},
+		        {"212", "Technical expertise and quality; Global and regional learning", "", ""},
+		        {"203", "", "Other improvement", ""},
+		        {"207", "Technical expertise and quality; Timeliness and responsiveness", "", ""},
+		        {"196", "Timeliness and responsiveness; Programme impact and usefulness", "Clearer service guidance", ""},
+		        {"197", "Timeliness and responsiveness; Programme impact and usefulness", "Clearer service guidance", ""},
+		        {"198", "Timeliness and responsiveness; Programme impact and usefulness", "Clearer service guidance", ""},
+		        {"199", "Timeliness and responsiveness; Programme impact and usefulness", "Clearer service guidance", ""},
+		        {"200", "Timeliness and responsiveness; Programme impact and usefulness", "Clearer service guidance", ""},
+		        {"202", "Timeliness and responsiveness; Programme impact and usefulness", "Clearer service guidance", ""},
+		        {"201", "Programme impact and usefulness", "Clearer service guidance", ""},
+		        {"188", "", "", ""},
+		        {"189", "", "", ""},
+		        {"194", "", "", ""},
+		        {"205", "", "", ""},
+		        {"213", "", "", ""},
+		        {"214", "", "", ""},
+		        {"215", "", "", ""}
+		    })
+	queryGroup: Lookups
+
+expression SatisfactionCorrections =
+		// Satisfaction answers confirmed as the wrong end of the scale
+		// (generated from scripts/survey_corrections.json).
+		#table(type table [#"Case number" = text, From = text, To = text],
+		    {
+		        {"CS0004507", "Very dissatisfied", "Very satisfied"},
+		        {"CS0005881", "Very dissatisfied", "Very satisfied"},
+		        {"CS0002644", "Very dissatisfied", "Satisfied"},
+		        {"CS0006672", "Very dissatisfied", "Very satisfied"},
+		        {"CS0003911", "Very dissatisfied", "Satisfied"},
+		        {"CS0002386", "Very dissatisfied", "Very satisfied"}
+		    })
+	queryGroup: Lookups
+
+expression ExcludedResponses =
+		// Survey responses removed from the Feedback data (scripts/survey_corrections.json).
+		{"56"}
+	queryGroup: Lookups
+
+expression OfficeCoords =
+		// Map position of each office as respondents named it (scripts/survey_office_coords.json).
+		#table(type table [Office = text, Longitude = number, Latitude = number],
+		    {
+		        {"APRO, Thailand", 101.01, 15.02},
+		        {"Afghanistan", 66.09, 33.86},
+		        {"Albania", 20.03, 41.14},
+		        {"Angola", 17.5, -12.29},
+		        {"Armenia", 45, 40.22},
+		        {"Barbados", -59.54, 13.19},
+		        {"Belize", -88.7, 17.2},
+		        {"Benin", 2.34, 9.65},
+		        {"Bhutan", 90.47, 27.43},
+		        {"Bolivia", -64.64, -16.73},
+		        {"Botswana", 23.77, -22.1},
+		        {"Brazil", -53.05, -10.81},
+		        {"Bulgaria", 25.19, 42.75},
+		        {"Burundi", 29.91, -3.38},
+		        {"Cambodia", 104.88, 12.68},
+		        {"Central African Republic", 20.37, 6.54},
+		        {"China", 103.87, 36.61},
+		        {"Costa Rica", -84.18, 9.97},
+		        {"Cote D'Ivoire", -5.61, 7.55},
+		        {"Dominican Republic", -70.46, 18.88},
+		        {"ECARO, Switzerland", 8.12, 46.79},
+		        {"Ecuador", -78.38, -1.46},
+		        {"Egypt", 29.9, 26.5},
+		        {"El Salvador", -88.87, 13.73},
+		        {"Equatorial Guinea", 10.37, 1.65},
+		        {"Ethiopia", 39.55, 8.65},
+		        {"Fiji (Pacific Islands)", 11.6, -16.38},
+		        {"Gambia", -15.43, 13.48},
+		        {"Georgia", 43.48, 42.16},
+		        {"Ghana", -1.24, 7.93},
+		        {"Guinea", -11.06, 10.45},
+		        {"Guinea Bissau", -14.95, 12.05},
+		        {"Guyana", -58.97, 4.79},
+		        {"Honduras", -86.59, 14.82},
+		        {"India", 79.59, 22.92},
+		        {"Indonesia", 114.02, -0.25},
+		        {"Iraq", 43.76, 33.04},
+		        {"Jordan", 36.78, 31.25},
+		        {"Kenya", 37.79, 0.6},
+		        {"Lao People's Dem Rep.", 103.75, 18.45},
+		        {"Lebanon", 35.87, 33.91},
+		        {"Lesotho", 28.17, -29.63},
+		        {"Liberia", -9.41, 6.43},
+		        {"Libya", 17.97, 27},
+		        {"MENARO, Jordan", 36.77, 31.28},
+		        {"Madagascar", 46.7, -19.4},
+		        {"Malawi", 34.19, -13.17},
+		        {"Malaysia", 114.68, 3.55},
+		        {"Mali", -3.54, 17.27},
+		        {"Moldova", 28.41, 47.2},
+		        {"Mongolia", 102.95, 46.82},
+		        {"Mozambique", 35.47, -17.23},
+		        {"Myanmar", 96.51, 21.02},
+		        {"Nepal", 84.01, 28.24},
+		        {"Niger", 9.33, 17.35},
+		        {"Nigeria", 8, 9.55},
+		        {"North Macedonia", 21.7, 41.61},
+		        {"Pacific", 11.6, -16.38},
+		        {"Pakistan", 69.41, 29.97},
+		        {"Palestine, State of", 35.27, 31.94},
+		        {"Papua New Guinea", 144.33, -6.65},
+		        {"Peru", -74.39, -9.19},
+		        {"Rep of Uzbekistan", 63.2, 41.75},
+		        {"Republic of Kyrgyzstan", 74.62, 41.51},
+		        {"Republic of Montenegro", 19.29, 42.79},
+		        {"Republic of Mozambique", 35.47, -17.23},
+		        {"Rwanda", 29.92, -2.01},
+		        {"Saudi Arabia", 44.52, 24.12},
+		        {"Senegal", -14.51, 14.35},
+		        {"Sierra Leone", -11.8, 8.53},
+		        {"Somalia", 45.73, 4.75},
+		        {"South Africa", 25.12, -28.96},
+		        {"South Sudan", 30.2, 7.29},
+		        {"Sri Lanka", 80.67, 7.7},
+		        {"Sudan", 29.86, 15.99},
+		        {"Tajikistan", 71.03, 38.58},
+		        {"Thailand", 101.01, 15.02},
+		        {"Timor-Leste", 125.97, -8.77},
+		        {"Tunisia", 9.53, 34.17},
+		        {"Turkmenistan", 59.28, 39.09},
+		        {"Türkiye", 35.39, 38.99},
+		        {"Uganda", 32.36, 1.3},
+		        {"United Rep. of Tanzania", 34.75, -6.26},
+		        {"Yemen", 47.54, 15.91},
+		        {"Zambia", 27.73, -13.4},
+		        {"Zimbabwe", 29.79, -18.91}
+		    })
+	queryGroup: Lookups
+
+expression FeaturedQuotes =
+		// Hand-picked quotes, lightly edited for length (from FeedbackView.tsx).
+		#table(type table [ID = text, Tone = text, Quote = text],
+		    {
+		        {"2", "Positive", "Responsive CoE staff who took the time to review the document. We appreciate her support!"},
+		        {"11", "Positive", "The flexibility from CoE colleagues in adapting to Honduras' specific requirements has been a key factor in meeting the outcomes on time."},
+		        {"71", "Positive", "The commitment of the supporting team led to timely submission of the Digital Learning National Strategy."},
+		        {"177", "Improvement", "Further ensure that the type of expertise offered fits the needs expressed. The request was very focused; the support provided was quite generic."},
+		        {"155", "Improvement", "What worked: the sharing of documents, information and resource materials. What can be improved: tailor it a bit more to the country context, as it is a bit generic."},
+		        {"161", "Improvement", "Availability of the consultant and experts and strong technical guidance. Area for improvement: language — the experts do not speak French, so they cannot effectively support government partners."}
+		    })
+	queryGroup: Lookups
+
+expression FieldMap =
+		// The request columns the model uses, by their name in the ServiceNow Excel export,
+		// with the ServiceNow API field that supplies each one when DataSource = "ServiceNow API".
+		//
+		// FILL IN the ApiField values that start with "TODO_": they are custom fields on the
+		// case table whose internal names (u_…) are specific to your instance. Find them in
+		// ServiceNow by right-clicking a field label on a case form ("Show - 'u_…'"), or ask
+		// whoever built your API. A TODO_ field loads as blank rather than failing.
+		// Kind: text = display value, date = stored UTC value, html = rich text.
+		#table(
+		    type table [Column = text, ApiField = text, Kind = text],
+		    {
+		        {"Case Report", "TODO_request_number", "text"},
+		        {"Request Type", "TODO_request_type", "text"},
+		        {"Expected Start Date", "TODO_expected_start_date", "date"},
+		        {"Expected Completion Date", "TODO_expected_completion_date", "date"},
+		        {"Office/Division", "TODO_office_division", "text"},
+		        {"Region", "TODO_region", "text"},
+		        {"Requested For", "TODO_requested_for", "text"},
+		        {"Requested by", "opened_by", "text"},
+		        {"Short description", "short_description", "text"},
+		        {"Description", "description", "text"},
+		        {"Objectives", "TODO_objectives", "text"},
+		        {"Language", "TODO_language", "text"},
+		        {"Modality", "TODO_modality", "text"},
+		        {"Global Practice and Cross Sectoral Teams", "TODO_global_practice", "text"},
+		        {"Primary Programme Offer", "TODO_primary_programme_offer", "text"},
+		        {"Assigned to", "assigned_to", "text"},
+		        {"Implementation Status", "TODO_implementation_status", "text"},
+		        {"Created", "sys_created_on", "date"},
+		        {"Opened", "opened_at", "date"},
+		        {"Updated", "sys_updated_on", "date"},
+		        {"Resolved", "resolved_at", "date"},
+		        {"Closed", "closed_at", "date"},
+		        {"Resolution code", "resolution_code", "text"},
+		        {"State", "state", "text"},
+		        {"Details/Description", "TODO_details_description", "html"},
+		        {"Collaborators", "TODO_collaborators", "text"},
+		        {"Number", "number", "text"}
+		    }
+		)
+	queryGroup: Source
+
+expression RawRequestsApi =
+		// Every case from the ServiceNow Table API, 5,000 per page, in creation order.
+		// sysparm_display_value=all returns each field as [display_value, value]: text and
+		// reference fields use the display value (names, not sys_ids); dates use the stored
+		// value. Credentials are entered once in Power BI (Data source settings), not here.
+		let
+		    PageSize = 5000,
+		    Mapped = Table.SelectRows(FieldMap, each not Text.StartsWith([ApiField], "TODO_")),
+		    Fields = Text.Combine(List.Distinct(Mapped[ApiField]), ","),
+		    Query = (if ServiceNowQuery = "" then "" else ServiceNowQuery & "^") & "ORDERBYsys_created_on",
+		    GetPage = (offset as number) as list =>
+		        let
+		            Response = Json.Document(Web.Contents(ServiceNowInstance, [
+		                RelativePath = "api/now/table/" & ServiceNowTable,
+		                Query = [
+		                    sysparm_query = Query,
+		                    sysparm_fields = Fields,
+		                    sysparm_display_value = "all",
+		                    sysparm_exclude_reference_link = "true",
+		                    sysparm_limit = Text.From(PageSize),
+		                    sysparm_offset = Text.From(offset)
+		                ],
+		                Headers = [Accept = "application/json"]
+		            ]))
+		        in
+		            Response[result],
+		    Pages = List.Generate(
+		        () => [Offset = 0, Rows = GetPage(0)],
+		        each List.Count([Rows]) > 0,
+		        each [Offset = [Offset] + PageSize, Rows = if List.Count([Rows]) < PageSize then {} else GetPage([Offset] + PageSize)],
+		        each [Rows]
+		    ),
+		    Records = List.Combine(Pages),
+		    Pick = (rec as record, field as text, kind as text) as any =>
+		        let
+		            V = if Text.StartsWith(field, "TODO_") then null else Record.FieldOrDefault(rec, field, null),
+		            Part = if V is record then (if kind = "date" then Record.FieldOrDefault(V, "value", null) else Record.FieldOrDefault(V, "display_value", null)) else V
+		        in
+		            if Part = "" then null else Part,
+		    FieldRecs = List.Buffer(Table.ToRecords(FieldMap)),
+		    Rows = List.Transform(Records, (rec) => List.Transform(FieldRecs, (m) => Pick(rec, m[ApiField], m[Kind]))),
+		    Result = Table.FromRows(Rows, FieldMap[Column])
+		in
+		    Result
+	queryGroup: Source
+
+expression RawRequestsExcel =
+		// The ServiceNow "Case Report" Excel export (first sheet). Used when
+		// DataSource = "Excel export": handy for checking the model against the files
+		// the current dashboard was built from. InferSheetDimensions works around the
+		// export's bogus sheet-size metadata.
+		let
+		    Book = Excel.Workbook(fnReadFile(ExcelExportPath), [UseHeaders = false, DelayTypes = true, InferSheetDimensions = true]),
+		    Sheet = Table.SelectRows(Book, each [Kind] = "Sheet"){0}[Data],
+		    Promoted = Table.PromoteHeaders(Sheet, [PromoteAllScalars = true]),
+		    Selected = Table.SelectColumns(Promoted, FieldMap[Column], MissingField.UseNull)
+		in
+		    Selected
+	queryGroup: Source
+
+expression RawRequestsAll =
+		// Every request in the source, typed, before anything is dropped. The survey joins
+		// against this (a rated request may later have been voided or marked duplicate).
+		let
+		    Raw = if DataSource = "ServiceNow API" then RawRequestsApi else RawRequestsExcel,
+		    DateCols = Table.SelectRows(FieldMap, each [Kind] = "date")[Column],
+		    TextCols = Table.SelectRows(FieldMap, each [Kind] <> "date")[Column],
+		    AsText = Table.TransformColumns(Raw, List.Transform(TextCols, (c) => {c, each if _ = null then "" else Text.From(_), type text})),
+		    AsDates = Table.TransformColumns(AsText, List.Transform(DateCols, (c) => {c, fnToDateTime, type nullable datetime})),
+		    WithId = Table.AddColumn(AsDates, "Request ID", each if [Case Report] <> "" then [Case Report] else [Number], type text),
+		    Real = Table.SelectRows(WithId, each [Request ID] <> "")
+		in
+		    Real
+	queryGroup: Source
+
+expression AsOf =
+		// The "as of" date: the day of the latest Created / Opened / Updated timestamp among
+		// the requests kept (same rule as scripts/extract.py). Every "days late", "last 30
+		// days" and "overdue" figure is measured from this date, not from the refresh time.
+		let
+		    Kept = Table.SelectRows(RawRequestsAll, each not List.Contains(ExcludedResolutions, [Resolution code])),
+		    Stamps = List.RemoveNulls(Kept[Created] & Kept[Opened] & Kept[Updated]),
+		    Day = DateTime.From(Date.From(List.Max(Stamps)))
+		in
+		    Day
+	queryGroup: Source

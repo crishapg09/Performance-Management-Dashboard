@@ -1,0 +1,97 @@
+/// One row per theme a response was coded to.
+table SurveyThemes
+
+	/// Times a theme was coded (a comment can carry several positive themes).
+	measure 'Theme mentions' = COUNTROWS ( SurveyThemes )
+		formatString: #,0
+		displayFolder: Feedback
+
+	/// Pieces of positive feedback: every positive theme coded, across all comments.
+	measure 'Positive feedback' = CALCULATE ( [Theme mentions], KEEPFILTERS ( SurveyThemes[Kind] = "Positive" ) )
+		formatString: #,0
+		displayFolder: Feedback
+
+	measure 'Positive feedback (card)' = COALESCE ( [Positive feedback], 0 )
+		formatString: #,0
+		displayFolder: Cards
+		isHidden
+
+	measure 'Top positive theme' =
+			VAR t =
+			    ADDCOLUMNS ( CALCULATETABLE ( VALUES ( SurveyThemes[Theme] ), SurveyThemes[Kind] = "Positive" ), "@n", CALCULATE ( [Theme mentions], SurveyThemes[Kind] = "Positive" ) )
+			VAR topRow = TOPN ( 1, t, [@n], DESC, SurveyThemes[Theme], ASC )
+			RETURN
+			    IF ( COUNTROWS ( t ) > 0, FORMAT ( MAXX ( topRow, [@n] ), "#,0" ) & " on " & LOWER ( CONCATENATEX ( topRow, SurveyThemes[Theme] ) ) )
+		displayFolder: Text
+
+	measure 'Positive feedback note' =
+			VAR w = [Written comments (card)]
+			RETURN
+			    IF (
+			        w = 0,
+			        "No written comments for this selection.",
+			        "Across " & FORMAT ( w, "#,0" ) & " written comments from " & FORMAT ( [Offices responding], "#,0" ) & " country offices. "
+			            & FORMAT ( DIVIDE ( [Comments with positive feedback (card)], w ), "0%" ) & " of people who wrote something took the time to name what worked."
+			    )
+		displayFolder: Text
+
+	measure 'Improvement note' =
+			VAR w = [Written comments (card)]
+			VAR i = [Improvement opportunities (card)]
+			VAR t =
+			    ADDCOLUMNS (
+			        CALCULATETABLE ( VALUES ( SurveyThemes[Theme] ), SurveyThemes[Kind] = "Improvement", SurveyThemes[Theme is other] = 0 ),
+			        "@n", CALCULATE ( [Theme mentions], SurveyThemes[Kind] = "Improvement" )
+			    )
+			VAR top2 = SUMX ( TOPN ( 2, t, [@n], DESC, SurveyThemes[Theme], ASC ), [@n] )
+			VAR noFix = FORMAT ( DIVIDE ( w - i, w ), "0%" ) & " of written comments raised nothing to fix at all. "
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        w = 0, "No written comments for this selection.",
+			        i = 0, "None of the written comments for this selection raised anything to fix.",
+			        i < 10, noFix & "Too few asked for change here to rank the themes with confidence — read them in the table below.",
+			        noFix & "Of those that did, " & FORMAT ( DIVIDE ( top2, i ), "0%" )
+			            & " point at the same two things — so a small number of changes would answer a large share of them."
+			    )
+		displayFolder: Text
+
+	column 'Response ID'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Response ID
+
+	column Kind
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Kind
+
+	column Theme
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Theme
+
+	column 'Theme is other'
+		dataType: int64
+		formatString: 0
+		isHidden
+		summarizeBy: none
+		sourceColumn: Theme is other
+
+	partition SurveyThemes = m
+		mode: import
+		source =
+				// One row per theme a response was coded to: every positive theme (a comment can
+				// carry several), its one improvement theme, and any data-quality flag.
+				let
+				    Source = Table.SelectColumns(Survey, {"Response ID", "Positive themes", "Improvement theme", "Data quality flag"}),
+				    Rows = List.Combine(List.Transform(Table.ToRecords(Source), (r) =>
+				        List.Transform(List.Select(List.Transform(Text.Split(r[Positive themes], ";"), Text.Trim), each _ <> ""),
+				            (t) => {r[Response ID], "Positive", t})
+				        & (if r[Improvement theme] <> null then {{r[Response ID], "Improvement", r[Improvement theme]}} else {})
+				        & (if r[Data quality flag] <> null then {{r[Response ID], "Data-quality flag", r[Data quality flag]}} else {}))),
+				    Result = Table.FromRows(Rows, type table [Response ID = text, Kind = text, Theme = text]),
+				    // "Other improvement" sorts last: it is the least actionable row
+				    Ordered = Table.AddColumn(Result, "Theme is other", each if Text.StartsWith(Text.Lower([Theme]), "other") then 1 else 0, Int64.Type)
+				in
+				    Ordered

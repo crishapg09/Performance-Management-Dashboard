@@ -1,0 +1,167 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.2.0/schema.json",
+  "name": "2797e1c5204d032def3a",
+  "position": {
+    "x": 24,
+    "y": 902,
+    "z": 3200,
+    "width": 1232,
+    "height": 22,
+    "tabOrder": 3200
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "Average satisfaction:  ",
+                    "textStyle": {
+                      "fontSize": "9pt",
+                      "color": "#5B7186",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": "● 4.5–5.0   ",
+                    "textStyle": {
+                      "fontSize": "9pt",
+                      "color": "#2E7D5B",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": "● 4.0–4.5   ",
+                    "textStyle": {
+                      "fontSize": "9pt",
+                      "color": "#5FA98A",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": "● 3.5–4.0   ",
+                    "textStyle": {
+                      "fontSize": "9pt",
+                      "color": "#E0A21E",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": "● below 3.5   ",
+                    "textStyle": {
+                      "fontSize": "9pt",
+                      "color": "#C0453F",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": "● no rating",
+                    "textStyle": {
+                      "fontSize": "9pt",
+                      "color": "#AEBCC7",
+                      "fontWeight": "bold"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#FFFFFF'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#E3E9EF'"
+                    }
+                  }
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "10D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "dropShadow": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
