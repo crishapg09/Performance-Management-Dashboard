@@ -134,7 +134,7 @@ m(R, 'Lead load max', LEADS + '\nRETURN MAXX ( leads, [@n] )', '#,0', P, 'Most r
 m(R, 'Lead load average', LEADS + '\nRETURN AVERAGEX ( leads, [@n] )', '0.0', P, 'Average requests per TA lead.')
 m(R, 'Busiest TA lead', LEADS + '''
 VAR maxLoad = MAXX ( leads, [@n] )
-RETURN CONCATENATEX ( TOPN ( 1, FILTER ( leads, [@n] = maxLoad ), Requests[TA lead], ASC ), Requests[TA lead] )''', None, P)
+RETURN CONCATENATEX ( FILTER ( leads, [@n] = maxLoad ), Requests[TA lead], ", ", Requests[TA lead], ASC )''', None, P)
 m(R, 'Leads at minimum', LEADS + '''
 VAR low = MINX ( leads, [@n] )
 VAR k = COUNTROWS ( FILTER ( leads, [@n] = low ) )

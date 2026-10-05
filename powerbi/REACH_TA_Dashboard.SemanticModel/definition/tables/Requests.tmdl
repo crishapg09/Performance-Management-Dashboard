@@ -267,7 +267,7 @@ table Requests
 			        "@n", CALCULATE ( COUNTROWS ( Requests ) )
 			    )
 			VAR maxLoad = MAXX ( leads, [@n] )
-			RETURN CONCATENATEX ( TOPN ( 1, FILTER ( leads, [@n] = maxLoad ), Requests[TA lead], ASC ), Requests[TA lead] )
+			RETURN CONCATENATEX ( FILTER ( leads, [@n] = maxLoad ), Requests[TA lead], ", ", Requests[TA lead], ASC )
 		displayFolder: Performance
 
 	measure 'Leads at minimum' =
