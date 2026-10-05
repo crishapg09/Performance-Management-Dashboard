@@ -55,7 +55,7 @@ Three of the mappings are best guesses. After the first refresh, open
 | Column | Mapped to | Should show | If not, try |
 |---|---|---|---|
 | `Case Report` | `parent` | the request number (CSR…) | the request's own number field; if blank, the case number (CS…) is used |
-| `Office/Division` | `u_business_area`, else `location` | the country office, e.g. "Kenya" | the field `ApiSample` shows holding the office |
+| `Office/Division` | `u_business_area` (confirmed) | the country office, e.g. "Kenya" | — |
 | `Primary Programme Offer` | `u_category` | e.g. "Policy Reform and Programme Design" | `u_sub_category` |
 
 Also check that `Implementation Status` reads `0%`, `25%` … `100%`,
@@ -70,7 +70,7 @@ known country offices. The field at the top goes on the Office/Division row of
 **Which field holds what?** The `ApiSample` query (**Source → ApiSample**)
 lists every field ServiceNow returns for five recent cases, one field per row.
 Use it to find the right field for any mapping. In `FieldMap`, a mapping can
-list fallbacks: `u_business_area|location` uses the first one with a value.
+list fallbacks: `a|b` uses the first one with a value.
 If the office is blank, every request falls into region "Unmapped", and the
 Performance and Data Quality pages come out empty. To change a mapping, edit the
 `ApiField` text in `FieldMap` (or in `tools/m/FieldMap.m`, then rerun
