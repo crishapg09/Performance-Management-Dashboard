@@ -5,7 +5,7 @@
 let
     PageSize = 5000,
     Mapped = Table.SelectRows(FieldMap, each not Text.StartsWith([ApiField], "TODO_")),
-    Fields = Text.Combine(List.Distinct(Mapped[ApiField]), ","),
+    Fields = Text.Combine(List.Distinct(List.Combine(List.Transform(Mapped[ApiField], (f) => List.Transform(Text.Split(f, "|"), Text.Trim)))), ","),
     Query = (if ServiceNowQuery = "" then "" else ServiceNowQuery & "^") & "ORDERBYsys_created_on",
     GetPage = (offset as number) as list =>
         let
@@ -30,12 +30,15 @@ let
         each [Rows]
     ),
     Records = List.Combine(Pages),
-    Pick = (rec as record, field as text, kind as text) as any =>
+    // one field, or several separated by "|": the first one with a value wins
+    PickOne = (rec as record, field as text, kind as text) as any =>
         let
             V = if Text.StartsWith(field, "TODO_") then null else Record.FieldOrDefault(rec, field, null),
             Part = if V is record then (if kind = "date" then Record.FieldOrDefault(V, "value", null) else Record.FieldOrDefault(V, "display_value", null)) else V
         in
             if Part = "" then null else Part,
+    Pick = (rec as record, field as text, kind as text) as any =>
+        List.First(List.RemoveNulls(List.Transform(Text.Split(field, "|"), (f) => PickOne(rec, Text.Trim(f), kind))), null),
     FieldRecs = List.Buffer(Table.ToRecords(FieldMap)),
     Rows = List.Transform(Records, (rec) => List.Transform(FieldRecs, (m) => Pick(rec, m[ApiField], m[Kind]))),
     Result = Table.FromRows(Rows, FieldMap[Column])

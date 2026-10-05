@@ -123,7 +123,7 @@ SHARED = [
                    'fnMapOffices', 'fnMapOffer', 'fnMapPractice', 'fnMapType', 'fnSurveySheet']),
     ('Lookups', ['RegionReference', 'OfficeLookup', 'OfferLookup', 'HqOffices', 'ExcludedResolutions',
                  'ManualCoding', 'SatisfactionCorrections', 'ExcludedResponses', 'OfficeCoords', 'FeaturedQuotes']),
-    ('Source', ['FieldMap', 'RawRequestsApi', 'RawRequestsAll', 'AsOf']),
+    ('Source', ['FieldMap', 'RawRequestsApi', 'RawRequestsAll', 'AsOf', 'ApiSample']),
 ]
 
 # --------------------------------------------------------------------------- tables

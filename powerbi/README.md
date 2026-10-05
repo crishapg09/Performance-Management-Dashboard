@@ -55,12 +55,19 @@ Three of the mappings are best guesses. After the first refresh, open
 | Column | Mapped to | Should show | If not, try |
 |---|---|---|---|
 | `Case Report` | `parent` | the request number (CSR…) | the request's own number field; if blank, the case number (CS…) is used |
-| `Office/Division` | `location` | the country office, e.g. "Kenya" | `u_business_area` |
+| `Office/Division` | `u_business_area`, else `location` | the country office, e.g. "Kenya" | the field `ApiSample` shows holding the office |
 | `Primary Programme Offer` | `u_category` | e.g. "Policy Reform and Programme Design" | `u_sub_category` |
 
 Also check that `Implementation Status` reads `0%`, `25%` … `100%`,
 `Unassigned` or `Discontinued`, and `Request Type` reads `Big Ticket Item` or
-`Regular`. The pages rely on those values. To change a mapping, edit the
+`Regular`. The pages rely on those values.
+
+**Which field holds what?** The `ApiSample` query (**Source → ApiSample**)
+lists every field ServiceNow returns for five recent cases, one field per row.
+Use it to find the right field for any mapping. In `FieldMap`, a mapping can
+list fallbacks: `u_business_area|location` uses the first one with a value.
+If the office is blank, every request falls into region "Unmapped", and the
+Performance and Data Quality pages come out empty. To change a mapping, edit the
 `ApiField` text in `FieldMap` (or in `tools/m/FieldMap.m`, then rerun
 `build_model.py`).
 

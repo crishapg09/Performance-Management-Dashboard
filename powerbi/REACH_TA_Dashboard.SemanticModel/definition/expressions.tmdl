@@ -559,9 +559,11 @@ expression FieldMap =
 		// Filled in from the fields of UNICEF's sn_customerservice_case API. Three are best guesses
 		// to confirm against a known case after the first refresh (see powerbi/README.md):
 		//   Case Report (the CSR request number)  <- parent        (if blank, the case number is used)
-		//   Office/Division                       <- location      (else try u_business_area)
+		//   Office/Division                       <- u_business_area, else location (location came back empty)
 		//   Primary Programme Offer               <- u_category    (else try u_sub_category)
 		// Collaborators is not used by any page and stays unmapped.
+		// Several fields can be given as "a|b": the first one with a value is used.
+		// To see every field the API returns, open the ApiSample query.
 		// Kind: text = display value, date = stored UTC value, html = rich text.
 		#table(
 		    type table [Column = text, ApiField = text, Kind = text],
@@ -570,7 +572,7 @@ expression FieldMap =
 		        {"Request Type", "u_request_type", "text"},
 		        {"Expected Start Date", "u_expected_start_date", "date"},
 		        {"Expected Completion Date", "u_expected_completion_date", "date"},
-		        {"Office/Division", "location", "text"},
+		        {"Office/Division", "u_business_area|location", "text"},
 		        {"Region", "u_region", "text"},
 		        {"Requested For", "u_requested_for", "text"},
 		        {"Requested by", "internal_user", "text"},
@@ -605,7 +607,7 @@ expression RawRequestsApi =
 		let
 		    PageSize = 5000,
 		    Mapped = Table.SelectRows(FieldMap, each not Text.StartsWith([ApiField], "TODO_")),
-		    Fields = Text.Combine(List.Distinct(Mapped[ApiField]), ","),
+		    Fields = Text.Combine(List.Distinct(List.Combine(List.Transform(Mapped[ApiField], (f) => List.Transform(Text.Split(f, "|"), Text.Trim)))), ","),
 		    Query = (if ServiceNowQuery = "" then "" else ServiceNowQuery & "^") & "ORDERBYsys_created_on",
 		    GetPage = (offset as number) as list =>
 		        let
@@ -630,12 +632,15 @@ expression RawRequestsApi =
 		        each [Rows]
 		    ),
 		    Records = List.Combine(Pages),
-		    Pick = (rec as record, field as text, kind as text) as any =>
+		    // one field, or several separated by "|": the first one with a value wins
+		    PickOne = (rec as record, field as text, kind as text) as any =>
 		        let
 		            V = if Text.StartsWith(field, "TODO_") then null else Record.FieldOrDefault(rec, field, null),
 		            Part = if V is record then (if kind = "date" then Record.FieldOrDefault(V, "value", null) else Record.FieldOrDefault(V, "display_value", null)) else V
 		        in
 		            if Part = "" then null else Part,
+		    Pick = (rec as record, field as text, kind as text) as any =>
+		        List.First(List.RemoveNulls(List.Transform(Text.Split(field, "|"), (f) => PickOne(rec, Text.Trim(f), kind))), null),
 		    FieldRecs = List.Buffer(Table.ToRecords(FieldMap)),
 		    Rows = List.Transform(Records, (rec) => List.Transform(FieldRecs, (m) => Pick(rec, m[ApiField], m[Kind]))),
 		    Result = Table.FromRows(Rows, FieldMap[Column])
@@ -668,4 +673,28 @@ expression AsOf =
 		    Day = DateTime.From(Date.From(List.Max(Stamps)))
 		in
 		    Day
+	queryGroup: Source
+
+expression ApiSample =
+		// Every field ServiceNow returns for five recent cases, one field per row, so you can
+		// see which field holds what (e.g. the country office) and fix FieldMap. Not loaded
+		// into the report; open it in Power Query to look.
+		let
+		    Response = Json.Document(Web.Contents(ServiceNowInstance, [
+		        RelativePath = "api/now/table/" & ServiceNowTable,
+		        Query = [
+		            sysparm_query = "ORDERBYDESCsys_updated_on",
+		            sysparm_display_value = "true",
+		            sysparm_exclude_reference_link = "true",
+		            sysparm_limit = "5"
+		        ],
+		        Headers = [Accept = "application/json"]
+		    ])),
+		    Records = Response[result],
+		    Fields = List.Sort(List.Distinct(List.Combine(List.Transform(Records, Record.FieldNames)))),
+		    AsText = (v as any) as nullable text => if v = null then null else try Text.From(v) otherwise "(complex value)",
+		    Rows = List.Transform(Fields, (f) => {f} & List.Transform(Records, (r) => AsText(Record.FieldOrDefault(r, f, null)))),
+		    Result = Table.FromRows(Rows, {"Field"} & List.Transform(List.Positions(Records), each "Case " & Text.From(_ + 1)))
+		in
+		    Result
 	queryGroup: Source
