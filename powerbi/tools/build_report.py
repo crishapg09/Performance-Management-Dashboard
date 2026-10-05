@@ -148,6 +148,7 @@ class Page:
         self.name, self.display, self.height = name, display, height
         self.visuals = []
         self.filters = []
+        self.interactions = []
         self.z = 0
 
     def add(self, key, x, y, w, h, visual, filters=None):
@@ -210,7 +211,7 @@ class Page:
         return self.add(key, x, y, w, h, vis, filters)
 
     def bar(self, key, x, y, w, h, title, category, values, series=None, colors=None, kind='clusteredBarChart',
-            filters=None, measure_color=None, tooltips=None, labels=True, legend=True, sort=None):
+            filters=None, measure_color=None, tooltips=None, labels=True, legend=True, sort=None, title_measure=None):
         qs = {'Category': {'projections': [proj(category)]},
               'Y': {'projections': [proj(v) if isinstance(v, str) else proj(*v) for v in values]}}
         if series:
@@ -230,7 +231,10 @@ class Page:
         query = {'queryState': qs}
         if sort:
             query['sortDefinition'] = {'sort': [{'field': F(sort[0]), 'direction': sort[1]}], 'isDefaultSort': False}
-        vis = {'visualType': kind, 'query': query, 'objects': objects, 'visualContainerObjects': chrome(title=title)}
+        vco = chrome(title=title)
+        if title_measure:
+            vco['title'][0]['properties']['text'] = {'expr': F(title_measure)}
+        vis = {'visualType': kind, 'query': query, 'objects': objects, 'visualContainerObjects': vco}
         return self.add(key, x, y, w, h, vis, filters)
 
     def table(self, key, x, y, w, h, title, columns, filters=None, sort=None):
@@ -251,6 +255,8 @@ class Page:
                             'outspace': [{'properties': {'color': solid('#EDF1F4')}}]}}
         if self.filters:
             page['filterConfig'] = {'filters': self.filters}
+        if self.interactions:
+            page['visualInteractions'] = self.interactions
         return page
 
 
@@ -307,11 +313,19 @@ def performance():
     ])
 
     p.text('stands', M, y, INNER, 30, [[('Where the work stands', 13, INK, True)],
-                                       [('Pick a metric to break it down by practice. Received in the last 30 days is a subset, to show inflow.', 9, MUTED, False)]])
+                                       [('Click a metric to break it down by practice (Overdue when none is picked). Received in the last 30 days is a subset, to show inflow.', 9, MUTED, False)]])
     y += 44
-    p.slicer('sl-metric', M, y, 260, "'Portfolio metric'[Metric]", 'Metric', None, None, h=300, single=True, mode='Basic')
-    p.bar('metric-practice', M + 272, y, INNER - 272, 300, 'Selected metric by practice', 'Practices[Practice]',
-          [('Requests.[Selected metric]', 'Requests')], tooltips=[('Requests.[Selected metric share of practice]', "Share of the practice's requests")])
+    # the four metrics as bars (the web dashboard's squares); clicking one filters the practice chart
+    pick = p.bar('metrics', M, y, 330, 300, 'Click a metric', "'Portfolio metric'[Metric]",
+                 [('Requests.[Selected metric]', 'Requests')], legend=False,
+                 colors=[("'Portfolio metric'[Metric]", {'Received last 30 days': '#1CABE2', 'Active & on track': '#3E9CD6',
+                                                         'Completed': GREEN, 'Overdue': RED})],
+                 sort=("'Portfolio metric'[Metric]", 'Ascending'))
+    target = p.bar('metric-practice', M + 342, y, INNER - 342, 300, 'Overdue — by practice', 'Practices[Practice]',
+                   [('Requests.[Selected metric]', 'Requests')], title_measure='Requests.[Selected metric title]',
+                   tooltips=[('Requests.[Selected metric share of practice]', "Share of the practice's requests")],
+                   sort=('Requests.[Selected metric]', 'Descending'))
+    p.interactions.append({'source': pick['name'], 'target': target['name'], 'type': 'DataFilter'})
     p.note('coverage', M, y + 306, INNER, 40, 'Requests.[Coverage note]', size=9)
     y += 360
 

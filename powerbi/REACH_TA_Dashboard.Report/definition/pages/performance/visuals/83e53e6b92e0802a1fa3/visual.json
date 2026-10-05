@@ -31,7 +31,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "Pick a metric to break it down by practice. Received in the last 30 days is a subset, to show inflow.",
+                    "value": "Click a metric to break it down by practice (Overdue when none is picked). Received in the last 30 days is a subset, to show inflow.",
                     "textStyle": {
                       "fontSize": "9pt",
                       "color": "#5B7186"

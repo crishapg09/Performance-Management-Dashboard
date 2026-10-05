@@ -105,5 +105,12 @@
         "howCreated": "User"
       }
     ]
-  }
+  },
+  "visualInteractions": [
+    {
+      "source": "5e0e51f1cb99a80a0bda",
+      "target": "f303930195399d218b58",
+      "type": "DataFilter"
+    }
+  ]
 }
