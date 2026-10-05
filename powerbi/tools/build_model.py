@@ -267,7 +267,21 @@ def description(text, tabs):
     return '\n'.join(pad + '/// ' + line for line in text.split('\n')) + '\n'
 
 
+def check_names():
+    """Power BI rejects a measure named like any column (case-insensitive), or two measures with one name."""
+    cols = {c['name'].lower(): t for t, v in TABLES.items() for c in v['columns']}
+    seen = set()
+    for m in MEASURES:
+        key = m['name'].lower()
+        if key in cols:
+            raise SystemExit(f"ERROR: measure '{m['name']}' has the same name as column {cols[key]}[{m['name']}]")
+        if key in seen:
+            raise SystemExit(f"ERROR: two measures are named '{m['name']}'")
+        seen.add(key)
+
+
 def write_model():
+    check_names()
     literals = literal_queries()
     if os.path.isdir(OUT):
         shutil.rmtree(OUT)

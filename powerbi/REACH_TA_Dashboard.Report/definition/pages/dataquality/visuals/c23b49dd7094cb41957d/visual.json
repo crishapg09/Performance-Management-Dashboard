@@ -23,11 +23,11 @@
                       "Entity": "Requests"
                     }
                   },
-                  "Property": "Ready to advance (card)"
+                  "Property": "Requests ready to advance (card)"
                 }
               },
-              "queryRef": "Requests.Ready to advance (card)",
-              "nativeQueryRef": "Ready to advance (card)",
+              "queryRef": "Requests.Requests ready to advance (card)",
+              "nativeQueryRef": "Requests ready to advance (card)",
               "displayName": "Ready to advance"
             }
           ]

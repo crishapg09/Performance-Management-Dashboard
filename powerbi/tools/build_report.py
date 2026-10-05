@@ -300,7 +300,7 @@ def performance():
     y = kpi_row(p, y, [
         ('k-total', 'Total requests', 'Requests.[Total requests (card)]', 'Requests.[Total requests sub]', INK),
         ('k-split', 'Big ticket · routine', 'Requests.[Big ticket vs routine]', 'Requests.[Big ticket vs routine sub]', INK),
-        ('k-recv', 'Received last 30 days', 'Requests.[Received last 30 days (card)]', 'Requests.[Received last 30 days sub]', INK),
+        ('k-recv', 'Received last 30 days', 'Requests.[Received in last 30 days (card)]', 'Requests.[Received last 30 days sub]', INK),
         ('k-track', 'Active & on track', 'Requests.[Active & on track (card)]', 'Requests.[Active & on track sub]', '#3E9CD6'),
         ('k-done', 'Completed', 'Requests.[Completed (card)]', 'Requests.[Completed sub]', GREEN),
         ('k-over', 'Overdue', 'Requests.[Overdue (card)]', 'Requests.[Overdue sub]', RED),
@@ -393,13 +393,13 @@ def data_quality():
     p.heading('s1', y, 1, 'Received & in review — Unassigned · 0%', BLUE)
     y += 44
     third = (INNER - 2 * GAP) / 3
-    p.bar('pipeline', M, y, round(third), 200, 'Setup pipeline', 'Requests[Status]', [('Requests.[In review]', 'Requests')],
+    p.bar('pipeline', M, y, round(third), 200, 'Setup pipeline', 'Requests[Status]', [('Requests.[Requests in review]', 'Requests')],
           colors=[('Requests[Status]', {'Unassigned': AMBER, '0%': '#9CC6E0'})])
     p.bar('aging', round(M + third + GAP), y, round(third), 200, 'Time in setup', 'Requests[Time in setup]',
-          [('Requests.[In review]', 'Requests')], colors=[('Requests[Time in setup]', {'0–14 days': '#3E9CD6', '15–30 days': AMBER, '30+ days': RED})],
+          [('Requests.[Requests in review]', 'Requests')], colors=[('Requests[Time in setup]', {'0–14 days': '#3E9CD6', '15–30 days': AMBER, '30+ days': RED})],
           sort=('Requests[Time in setup]', 'Ascending'))
     x3 = round(M + 2 * (third + GAP))
-    p.kpi('ready', x3, y, round(third), 'Ready to advance', 'Requests.[Ready to advance (card)]', 'Requests.[Ready to advance sub]', GREEN)
+    p.kpi('ready', x3, y, round(third), 'Ready to advance', 'Requests.[Requests ready to advance (card)]', 'Requests.[Ready to advance sub]', GREEN)
     p.kpi('nolead', x3, y + 126, round(third), 'Setup contradiction: past assignment, but no TA lead',
           'Requests.[Assigned without TA lead (card)]', None, RED, h=74)
     y += 212
@@ -432,7 +432,7 @@ def data_quality():
     p.heading('s3', y, 3, 'Overdue, at-risk & closure', RED)
     y += 44
     p.kpi('o-count', M, y, 300, 'Overdue', 'Requests.[Overdue (card)]', None, RED, h=74)
-    p.kpi('o-risk', M, y + 86, 300, 'Upcoming closure (next 30 days)', 'Requests.[Due in next 30 days (card)]', None, AMBER, h=74)
+    p.kpi('o-risk', M, y + 86, 300, 'Upcoming closure (next 30 days)', 'Requests.[Requests due in next 30 days (card)]', None, AMBER, h=74)
     p.kpi('o-close', M, y + 172, 300, 'Completed or discontinued, not closed', 'Requests.[Should be closed (card)]', None, AMBER, h=74)
     p.bar('o-sev', M + 312, y, INNER - 312, 246, 'Overdue severity — how far past the target date', 'Requests[Overdue bucket]',
           [('Requests.[Overdue]', 'Overdue requests')], colors=[('Requests[Overdue bucket]', BUCKET_COLORS)],

@@ -2,7 +2,7 @@
 table 'Data date'
 
 	/// The date every figure is measured from: the day of the latest activity in the data.
-	measure 'As of' = MAX ( 'Data date'[As of] )
+	measure 'As of date' = MAX ( 'Data date'[As of] )
 		formatString: d mmm yyyy
 
 	column 'As of'

@@ -41,11 +41,11 @@
                       "Entity": "Requests"
                     }
                   },
-                  "Property": "In review"
+                  "Property": "Requests in review"
                 }
               },
-              "queryRef": "Requests.In review",
-              "nativeQueryRef": "In review",
+              "queryRef": "Requests.Requests in review",
+              "nativeQueryRef": "Requests in review",
               "displayName": "Requests"
             }
           ]

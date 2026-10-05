@@ -12,7 +12,7 @@ table Requests
 			VAR hi = MAXX ( scopeRows, Requests[Opened month] )
 			RETURN
 			    "Created " & FORMAT ( lo, "mmm" ) & IF ( hi <> lo, "–" & FORMAT ( hi, "mmm" ) ) & " " & FORMAT ( hi, "yyyy" )
-			        & "  ·  as of " & FORMAT ( [As of], "d mmm yyyy" )
+			        & "  ·  as of " & FORMAT ( [As of date], "d mmm yyyy" )
 		displayFolder: Text
 
 	/// Requests in the current filter.
@@ -81,7 +81,7 @@ table Requests
 		displayFolder: Text
 
 	/// Created in the 30 days up to the as-of date.
-	measure 'Received last 30 days' =
+	measure 'Received in last 30 days' =
 			CALCULATE (
 			    COUNTROWS ( Requests ),
 			    KEEPFILTERS ( Requests[Received last 30 days] = "Yes" )
@@ -89,7 +89,7 @@ table Requests
 		formatString: #,0
 		displayFolder: Performance
 
-	measure 'Received last 30 days (card)' = COALESCE ( [Received last 30 days], 0 )
+	measure 'Received in last 30 days (card)' = COALESCE ( [Received in last 30 days], 0 )
 		formatString: #,0
 		displayFolder: Cards
 		isHidden
@@ -139,7 +139,7 @@ table Requests
 	measure 'Total requests sub' = "TA requests · country offices"
 		displayFolder: Text
 
-	measure 'Received last 30 days sub' = FORMAT ( DIVIDE ( [Received last 30 days (card)], [Total requests] ), "0%" ) & " of all requests · new since " & FORMAT ( [As of] - 30, "d mmm yyyy" )
+	measure 'Received last 30 days sub' = FORMAT ( DIVIDE ( [Received in last 30 days (card)], [Total requests] ), "0%" ) & " of all requests · new since " & FORMAT ( [As of date] - 30, "d mmm yyyy" )
 		displayFolder: Text
 
 	measure 'Active & on track sub' = FORMAT ( DIVIDE ( [Active & on track (card)], [Total requests] ), "0%" ) & " of all requests · in progress, not overdue"
@@ -155,7 +155,7 @@ table Requests
 	measure 'Selected metric' =
 			SWITCH (
 			    SELECTEDVALUE ( 'Portfolio metric'[Metric], "Overdue" ),
-			    "Received last 30 days", [Received last 30 days],
+			    "Received last 30 days", [Received in last 30 days],
 			    "Active & on track", [Active & on track],
 			    "Completed", [Completed],
 			    "Overdue", [Overdue]
@@ -202,7 +202,7 @@ table Requests
 	measure 'Opened vs completed note' =
 			"Opened " & FORMAT ( SUMX ( DimMonth, [Opened in month] ) + 0, "#,0" )
 			    & "  ·  Completed " & FORMAT ( SUMX ( DimMonth, [Completed in month] ) + 0, "#,0" )
-			    & "  (April – " & FORMAT ( [As of], "mmm" ) & ")"
+			    & "  (April – " & FORMAT ( [As of date], "mmm" ) & ")"
 		displayFolder: Text
 
 	measure 'Overdue severity note' =
@@ -316,7 +316,7 @@ table Requests
 		isHidden
 
 	/// Unassigned or 0%.
-	measure 'In review' =
+	measure 'Requests in review' =
 			CALCULATE (
 			    COUNTROWS ( Requests ),
 			    KEEPFILTERS ( Requests[In review] = "Yes" )
@@ -324,7 +324,7 @@ table Requests
 		formatString: #,0
 		displayFolder: Data Quality
 
-	measure 'In review (card)' = COALESCE ( [In review], 0 )
+	measure 'Requests in review (card)' = COALESCE ( [Requests in review], 0 )
 		formatString: #,0
 		displayFolder: Cards
 		isHidden
@@ -412,7 +412,7 @@ table Requests
 		displayFolder: Text
 
 	/// At 0% with a description, a TA lead and a target date.
-	measure 'Ready to advance' =
+	measure 'Requests ready to advance' =
 			CALCULATE (
 			    COUNTROWS ( Requests ),
 			    KEEPFILTERS ( Requests[Ready to advance] = "Yes" )
@@ -420,7 +420,7 @@ table Requests
 		formatString: #,0
 		displayFolder: Data Quality
 
-	measure 'Ready to advance (card)' = COALESCE ( [Ready to advance], 0 )
+	measure 'Requests ready to advance (card)' = COALESCE ( [Requests ready to advance], 0 )
 		formatString: #,0
 		displayFolder: Cards
 		isHidden
@@ -536,7 +536,7 @@ table Requests
 		isHidden
 
 	/// Active requests whose expected completion date falls in the next 30 days.
-	measure 'Due in next 30 days' =
+	measure 'Requests due in next 30 days' =
 			CALCULATE (
 			    COUNTROWS ( Requests ),
 			    KEEPFILTERS ( Requests[Due in next 30 days] = "Yes" )
@@ -544,7 +544,7 @@ table Requests
 		formatString: #,0
 		displayFolder: Data Quality
 
-	measure 'Due in next 30 days (card)' = COALESCE ( [Due in next 30 days], 0 )
+	measure 'Requests due in next 30 days (card)' = COALESCE ( [Requests due in next 30 days], 0 )
 		formatString: #,0
 		displayFolder: Cards
 		isHidden
@@ -574,7 +574,7 @@ table Requests
 
 	/// In review (Unassigned or 0%) but already past the expected completion date.
 	measure 'Past target, not started' =
-			VAR d = [As of]
+			VAR d = [As of date]
 			RETURN
 			    CALCULATE (
 			        COUNTROWS ( Requests ),
@@ -606,13 +606,13 @@ table Requests
 		displayFolder: Text
 
 	measure 'Stall note' =
-			"Every request still in review, longest wait first. Days waiting = as-of date (" & FORMAT ( [As of], "dd mmm yyyy" )
+			"Every request still in review, longest wait first. Days waiting = as-of date (" & FORMAT ( [As of date], "dd mmm yyyy" )
 			    & ") − last Updated date (for Unassigned, − the date received). Stalled = Unassigned over 14 days, or 0% not updated in 30. "
 			    & "Stage-transition dates are not captured yet, so this is a proxy for time in the current stage."
 		displayFolder: Text
 
 	measure 'Overdue note' =
-			"Days overdue = as-of date (" & FORMAT ( [As of], "dd mmm yyyy" ) & ") − Expected Completion Date. "
+			"Days overdue = as-of date (" & FORMAT ( [As of date], "dd mmm yyyy" ) & ") − Expected Completion Date. "
 			    & "If this looks too high, the TA lead should update the Expected Completion Date on the request."
 		displayFolder: Text
 

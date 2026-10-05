@@ -23,11 +23,11 @@
                       "Entity": "Requests"
                     }
                   },
-                  "Property": "Received last 30 days (card)"
+                  "Property": "Received in last 30 days (card)"
                 }
               },
-              "queryRef": "Requests.Received last 30 days (card)",
-              "nativeQueryRef": "Received last 30 days (card)",
+              "queryRef": "Requests.Received in last 30 days (card)",
+              "nativeQueryRef": "Received in last 30 days (card)",
               "displayName": "Received last 30 days"
             }
           ]

@@ -23,11 +23,11 @@
                       "Entity": "Requests"
                     }
                   },
-                  "Property": "Due in next 30 days (card)"
+                  "Property": "Requests due in next 30 days (card)"
                 }
               },
-              "queryRef": "Requests.Due in next 30 days (card)",
-              "nativeQueryRef": "Due in next 30 days (card)",
+              "queryRef": "Requests.Requests due in next 30 days (card)",
+              "nativeQueryRef": "Requests due in next 30 days (card)",
               "displayName": "Upcoming closure (next 30 days)"
             }
           ]

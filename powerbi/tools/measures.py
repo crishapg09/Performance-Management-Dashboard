@@ -28,7 +28,7 @@ def count_where(*filters):
 
 
 # ---------------------------------------------------------------- shared
-m('Data date', 'As of', "MAX ( 'Data date'[As of] )", 'd mmm yyyy', None,
+m('Data date', 'As of date', "MAX ( 'Data date'[As of] )", 'd mmm yyyy', None,
   'The date every figure is measured from: the day of the latest activity in the data.')
 m(R, 'As of label', '''VAR scopeRows =
     CALCULATETABLE (
@@ -40,7 +40,7 @@ VAR lo = MINX ( scopeRows, Requests[Opened month] )
 VAR hi = MAXX ( scopeRows, Requests[Opened month] )
 RETURN
     "Created " & FORMAT ( lo, "mmm" ) & IF ( hi <> lo, "–" & FORMAT ( hi, "mmm" ) ) & " " & FORMAT ( hi, "yyyy" )
-        & "  ·  as of " & FORMAT ( [As of], "d mmm yyyy" )''', None, TX)
+        & "  ·  as of " & FORMAT ( [As of date], "d mmm yyyy" )''', None, TX)
 
 # ---------------------------------------------------------------- Performance
 m(R, 'Total requests', 'COUNTROWS ( Requests )', '#,0', P, 'Requests in the current filter.', card=True)
@@ -62,7 +62,7 @@ m(R, 'Big ticket vs routine', '''FORMAT ( [Big ticket (card)], "#,0" ) & " · " 
 m(R, 'Big ticket vs routine sub', '''FORMAT ( DIVIDE ( [Big ticket (card)], [Total requests] ), "0%" ) & " big ticket · "
     & FORMAT ( DIVIDE ( [Routine (card)], [Total requests] ), "0%" ) & " routine"''', None, TX)
 
-m(R, 'Received last 30 days', count_where('Requests[Received last 30 days] = "Yes"'), '#,0', P,
+m(R, 'Received in last 30 days', count_where('Requests[Received last 30 days] = "Yes"'), '#,0', P,
   'Created in the 30 days up to the as-of date.', card=True)
 m(R, 'Active & on track', count_where('Requests[On track] = "Yes"'), '#,0', P,
   'In progress (not completed, discontinued or unassigned) and not past the expected completion date.', card=True)
@@ -72,7 +72,7 @@ m(R, 'Overdue', count_where('Requests[Is overdue] = "Yes"'), '#,0', P,
   'an unassigned request past its target is the worst kind of overdue.', card=True)
 
 for name, sub in (('Total requests', '"TA requests · country offices"'),
-                  ('Received last 30 days', '''FORMAT ( DIVIDE ( [Received last 30 days (card)], [Total requests] ), "0%" ) & " of all requests · new since " & FORMAT ( [As of] - 30, "d mmm yyyy" )'''),
+                  ('Received last 30 days', '''FORMAT ( DIVIDE ( [Received in last 30 days (card)], [Total requests] ), "0%" ) & " of all requests · new since " & FORMAT ( [As of date] - 30, "d mmm yyyy" )'''),
                   ('Active & on track', '''FORMAT ( DIVIDE ( [Active & on track (card)], [Total requests] ), "0%" ) & " of all requests · in progress, not overdue"'''),
                   ('Completed', '''FORMAT ( DIVIDE ( [Completed (card)], [Total requests] ), "0%" ) & " of all requests reached 100%"'''),
                   ('Overdue', '''FORMAT ( DIVIDE ( [Overdue (card)], [Total requests] ), "0%" ) & " of all requests · past target date"''')):
@@ -80,7 +80,7 @@ for name, sub in (('Total requests', '"TA requests · country offices"'),
 
 m(R, 'Selected metric', '''SWITCH (
     SELECTEDVALUE ( 'Portfolio metric'[Metric], "Overdue" ),
-    "Received last 30 days", [Received last 30 days],
+    "Received last 30 days", [Received in last 30 days],
     "Active & on track", [Active & on track],
     "Completed", [Completed],
     "Overdue", [Overdue]
@@ -108,7 +108,7 @@ m(R, 'Completed in month', '''CALCULATE (
 )''', '#,0', P, 'Requests that reached 100% and were closed (or resolved) in the month on the axis.')
 m(R, 'Opened vs completed note', '''"Opened " & FORMAT ( SUMX ( DimMonth, [Opened in month] ) + 0, "#,0" )
     & "  ·  Completed " & FORMAT ( SUMX ( DimMonth, [Completed in month] ) + 0, "#,0" )
-    & "  (April – " & FORMAT ( [As of], "mmm" ) & ")"''', None, TX)
+    & "  (April – " & FORMAT ( [As of date], "mmm" ) & ")"''', None, TX)
 
 m(R, 'Overdue severity note', '''VAR a = CALCULATE ( [Overdue (card)], Requests[Overdue bucket] = "1–30 days" )
 VAR b = CALCULATE ( [Overdue (card)], Requests[Overdue bucket] = "31–60 days" )
@@ -146,7 +146,7 @@ m(R, 'Workload note', '''FORMAT ( [TA leads] + 0, "#,0" ) & " TA leads hold thes
 # ---------------------------------------------------------------- Data Quality
 m(R, 'Awaiting assignment', count_where('Requests[Status] = "Unassigned"'), '#,0', DQ, 'Unassigned country office requests.', card=True)
 m(R, 'In review (0%)', count_where('Requests[Status] = "0%"'), '#,0', DQ, 'At 0%: being scoped with the country office.', card=True)
-m(R, 'In review', count_where('Requests[In review] = "Yes"'), '#,0', DQ, 'Unassigned or 0%.', card=True)
+m(R, 'Requests in review', count_where('Requests[In review] = "Yes"'), '#,0', DQ, 'Unassigned or 0%.', card=True)
 m(R, 'Stalled in setup', count_where('Requests[Stalled] = "Yes"'), '#,0', DQ,
   'Unassigned for more than 14 days, or at 0% and not updated in 30.', card=True)
 m(R, 'In delivery (25%+)', count_where('Requests[Status] IN { "25%", "50%", "75%" }'), '#,0', DQ, 'Work has started (25%–75%).', card=True)
@@ -160,7 +160,7 @@ RETURN
     IF ( d > 0, IF ( n >= d, 1, MIN ( 0.99, ROUND ( DIVIDE ( n, d ) * 100, 0 ) / 100 ) ) )''', '0%', DQ,
   'Share of 25%+ requests passing every check. Never rounds up to 100%: one failing record still shows.')
 m(R, 'Record quality sub', '''FORMAT ( [Passing every check (card)], "#,0" ) & " of " & FORMAT ( [Delivery-stage requests (card)], "#,0" ) & " pass every check"''', None, TX)
-m(R, 'Ready to advance', count_where('Requests[Ready to advance] = "Yes"'), '#,0', DQ,
+m(R, 'Requests ready to advance', count_where('Requests[Ready to advance] = "Yes"'), '#,0', DQ,
   'At 0% with a description, a TA lead and a target date.', card=True)
 m(R, 'Ready to advance sub', '''"of " & FORMAT ( [In review (0%) (card)], "#,0" ) & " at 0% have a description, a TA lead and a target date"''', None, TX)
 m(R, 'Assigned without TA lead', count_where('Requests[Assigned without lead] = "Yes"'), '#,0', DQ,
@@ -189,13 +189,13 @@ m(R, 'Placeholder descriptions', count_where('Requests[Placeholder description] 
   'Descriptions that are placeholder text ("test", "please add a description", "N/A"…) on requests still in play.', card=True)
 m(R, 'Possible duplicates', count_where('Requests[Possible duplicate] = "Yes"'), '#,0', DQ,
   'Later requests with the same Requested For and short description as an earlier one.', card=True)
-m(R, 'Due in next 30 days', count_where('Requests[Due in next 30 days] = "Yes"'), '#,0', DQ,
+m(R, 'Requests due in next 30 days', count_where('Requests[Due in next 30 days] = "Yes"'), '#,0', DQ,
   'Active requests whose expected completion date falls in the next 30 days.', card=True)
 m(R, 'Should be closed', count_where('Requests[Not closed] = "Yes"'), '#,0', DQ,
   'Completed or discontinued, but with no Closed date.', card=True)
 m(R, 'Requests in phase', count_where('NOT ISBLANK ( Requests[Phase] )'), '#,0', DQ,
   'Requests counted once in their lifecycle phase (discontinued excluded).')
-m(R, 'Past target, not started', '''VAR d = [As of]
+m(R, 'Past target, not started', '''VAR d = [As of date]
 RETURN
     CALCULATE (
         COUNTROWS ( Requests ),
@@ -213,10 +213,10 @@ m(R, 'Requests with no office', '''CALCULATE (
 ) + 0''', '#,0', DQ, 'Requests in the whole export with no country office recorded.')
 m(R, 'Data quality header', '''FORMAT ( [Total requests (card)], "#,0" ) & " country office requests  ·  "
     & FORMAT ( [Requests with no office], "#,0" ) & " with no country office recorded (not shown)"''', None, TX)
-m(R, 'Stall note', '''"Every request still in review, longest wait first. Days waiting = as-of date (" & FORMAT ( [As of], "dd mmm yyyy" )
+m(R, 'Stall note', '''"Every request still in review, longest wait first. Days waiting = as-of date (" & FORMAT ( [As of date], "dd mmm yyyy" )
     & ") − last Updated date (for Unassigned, − the date received). Stalled = Unassigned over 14 days, or 0% not updated in 30. "
     & "Stage-transition dates are not captured yet, so this is a proxy for time in the current stage."''', None, TX)
-m(R, 'Overdue note', '''"Days overdue = as-of date (" & FORMAT ( [As of], "dd mmm yyyy" ) & ") − Expected Completion Date. "
+m(R, 'Overdue note', '''"Days overdue = as-of date (" & FORMAT ( [As of date], "dd mmm yyyy" ) & ") − Expected Completion Date. "
     & "If this looks too high, the TA lead should update the Expected Completion Date on the request."''', None, TX)
 
 # filter summary (Performance and Data Quality)
