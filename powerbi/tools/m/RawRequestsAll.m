@@ -1,7 +1,7 @@
 // Every request in the source, typed, before anything is dropped. The survey joins
 // against this (a rated request may later have been voided or marked duplicate).
 let
-    Raw = if DataSource = "ServiceNow API" then RawRequestsApi else RawRequestsExcel,
+    Raw = RawRequestsApi,
     DateCols = Table.SelectRows(FieldMap, each [Kind] = "date")[Column],
     TextCols = Table.SelectRows(FieldMap, each [Kind] <> "date")[Column],
     AsText = Table.TransformColumns(Raw, List.Transform(TextCols, (c) => {c, each if _ = null then "" else Text.From(_), type text})),

@@ -111,11 +111,9 @@ def literal_queries():
 # --------------------------------------------------------------------------- parameters
 
 PARAMETERS = [
-    ('DataSource', 'Excel export', 'Where the request data comes from.', ['ServiceNow API', 'Excel export']),
     ('ServiceNowInstance', 'https://YOUR-INSTANCE.service-now.com', 'Base URL of the ServiceNow instance.', None),
     ('ServiceNowTable', 'sn_customerservice_case', 'Table the TA cases live in.', None),
     ('ServiceNowQuery', '', 'Optional encoded query (the filter of your "Case Report"), e.g. active=true^... Leave blank for every case.', None),
-    ('ExcelExportPath', r'C:\REACH\sn_customerservice_case.xlsx', 'The ServiceNow Excel export: a local path or a SharePoint/OneDrive file URL. Used when DataSource = "Excel export".', None),
     ('SurveyWorkbookPath', r'C:\REACH\REACH_TA_Survey_Analysis_FINAL.xlsx', 'The survey analysis workbook: a local path or a SharePoint/OneDrive file URL.', None),
 ]
 
@@ -125,7 +123,7 @@ SHARED = [
                    'fnMapOffices', 'fnMapOffer', 'fnMapPractice', 'fnMapType', 'fnSurveySheet']),
     ('Lookups', ['RegionReference', 'OfficeLookup', 'OfferLookup', 'HqOffices', 'ExcludedResolutions',
                  'ManualCoding', 'SatisfactionCorrections', 'ExcludedResponses', 'OfficeCoords', 'FeaturedQuotes']),
-    ('Source', ['FieldMap', 'RawRequestsApi', 'RawRequestsExcel', 'RawRequestsAll', 'AsOf']),
+    ('Source', ['FieldMap', 'RawRequestsApi', 'RawRequestsAll', 'AsOf']),
 ]
 
 # --------------------------------------------------------------------------- tables

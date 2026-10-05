@@ -2,7 +2,11 @@
 
 A Power BI version of the web dashboard: the same three pages (Performance,
 Data Quality Review, Feedback), the same definitions and the same clean-up
-rules, with data coming straight from ServiceNow.
+rules. It reads two sources:
+
+1. **ServiceNow**, through the Table API: the TA requests.
+2. **The survey analysis workbook** (`REACH_TA_Survey_Analysis_FINAL.xlsx`):
+   the feedback.
 
 ```
 powerbi/
@@ -20,25 +24,18 @@ powerbi/
    tick **Power BI Project (.pbip) save option** and **Store reports using
    enhanced metadata format (PBIR)**, restart Desktop and open it again.
 3. Desktop will say the model has no data yet. That is expected: set the
-   parameters (step 2), then **Refresh**.
+   parameters (section 2) and map the API fields (section 3), then **Refresh**.
 
 ## 2. Set the parameters
 
 **Home → Transform data → Edit parameters**:
 
-| Parameter | What to put |
-|---|---|
-| `DataSource` | `Excel export` to start (see below), then `ServiceNow API` |
-| `ServiceNowInstance` | your instance URL, e.g. `https://unicef.service-now.com` |
-| `ServiceNowTable` | `sn_customerservice_case` (change only if your API uses another table) |
-| `ServiceNowQuery` | optional: the filter of your "Case Report" as an encoded query (in ServiceNow, right-click the report's filter breadcrumb → **Copy query**). Blank = every case |
-| `ExcelExportPath` | path or SharePoint/OneDrive URL of a ServiceNow Excel export |
-| `SurveyWorkbookPath` | path or SharePoint/OneDrive URL of `REACH_TA_Survey_Analysis_FINAL.xlsx` |
-
-**Start with `Excel export`.** Point it at the same export the web dashboard
-uses and refresh. Compare the pages with the table in section 5. Once they
-match, switch to the API, so any difference after the switch comes from the
-API and not the model.
+| Parameter | Source | What to put |
+|---|---|---|
+| `ServiceNowInstance` | ServiceNow | your instance URL, e.g. `https://unicef.service-now.com` |
+| `ServiceNowTable` | ServiceNow | `sn_customerservice_case` (change only if your API uses another table) |
+| `ServiceNowQuery` | ServiceNow | optional: the filter of your "Case Report" as an encoded query (in ServiceNow, right-click the report's filter breadcrumb → **Copy query**). Blank = every case |
+| `SurveyWorkbookPath` | Survey | path or SharePoint/OneDrive URL of `REACH_TA_Survey_Analysis_FINAL.xlsx` |
 
 ## 3. Connect the ServiceNow API
 
@@ -46,7 +43,7 @@ The model calls the standard ServiceNow Table API
 (`/api/now/table/<table>`), 5,000 records per call, until it has every case.
 
 **Map the custom fields.** Open the `FieldMap` query (**Transform data →
-Source → FieldMap**). Each row is one column of the Excel export and the API
+Source → FieldMap**). Each row is one request field the model uses and the API
 field that supplies it. Standard fields are filled in already (`number`,
 `short_description`, `assigned_to`, `opened_at`, …). Rows whose API field
 starts with `TODO_` are UNICEF's custom fields (request type, office, region,
@@ -55,7 +52,9 @@ details, objectives, modality…). Replace each `TODO_…` with the field's
 internal name (`u_…`). To find it, right-click the field label on a case form
 in ServiceNow; the menu shows **Show - 'u_…'**. Or ask whoever set up your API
 access. A `TODO_` field loads as blank, so the model refreshes before the
-mapping is complete, but the pages will be wrong until it is done.
+mapping is complete, but the pages will be wrong until it is done. The
+`Column` names on the left are the model's own names for each field (they are
+the names the web dashboard's export uses); only the `ApiField` side changes.
 
 > If your API is a custom one (a Scripted REST API that already returns the
 > report's columns), the `RawRequestsApi` query needs adapting to its URL and
@@ -64,10 +63,6 @@ mapping is complete, but the pages will be wrong until it is done.
 **Credentials.** On the first refresh Desktop asks how to sign in to the
 instance. Choose **Basic** (a ServiceNow integration account) or whatever your
 API uses. Credentials are stored by Power BI, never in these files.
-
-**Time zone.** The API returns dates in UTC; the Excel export shows them in
-your ServiceNow time zone. A request created late in the day can land on a
-different date, which can move a "days late" figure by one at the edges.
 
 ## 4. Publish and schedule
 
@@ -87,8 +82,9 @@ service cannot read a file on someone's laptop without a gateway.
 
 ## 5. Check the numbers
 
-With `DataSource = Excel export`, the 2 Oct 2026 export, the FINAL survey
-workbook and no slicers set, the pages should show:
+Once the field mapping is done and the model has refreshed, compare the pages
+with the web dashboard. With no slicers set and the 2 Oct 2026 data, the web
+dashboard shows:
 
 | Page | Figure | Value |
 |---|---|---|
@@ -114,9 +110,16 @@ workbook and no slicers set, the pages should show:
 | | Routine / Big Ticket / not matched | 177 / 35 / 1 |
 | | Pieces of positive feedback | 219 |
 
-These come from `tools/reconcile.py`, a line-by-line Python copy of the model's
-logic. On these files it gives the same 45 figures as the web dashboard. Run it
-on newer files to get the values to expect:
+Power BI shows the data as of its own refresh, so expect some movement from
+requests updated since 2 Oct. Compare against the web dashboard on the same
+day instead. A gap that persists usually points to one field in `FieldMap`
+mapped to the wrong API field. Dates can also differ: the API returns UTC, the
+web dashboard's export uses your ServiceNow time zone, so a figure can move by
+one at the edges of a day.
+
+`tools/reconcile.py` is a line-by-line Python copy of the model's logic. Run on
+the export and survey workbook the web dashboard uses, it gives the same 45
+figures as the web dashboard:
 `python powerbi/tools/reconcile.py <export.xlsx> <survey.xlsx>`.
 
 ## What is where

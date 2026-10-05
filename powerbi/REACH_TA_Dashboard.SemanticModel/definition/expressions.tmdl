@@ -1,9 +1,3 @@
-/// Where the request data comes from.
-expression DataSource = "Excel export" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true, List={"ServiceNow API", "Excel export"}, DefaultValue="Excel export"]
-	queryGroup: Parameters
-
-	annotation PBI_ResultType = Text
-
 /// Base URL of the ServiceNow instance.
 expression ServiceNowInstance = "https://YOUR-INSTANCE.service-now.com" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 	queryGroup: Parameters
@@ -18,12 +12,6 @@ expression ServiceNowTable = "sn_customerservice_case" meta [IsParameterQuery=tr
 
 /// Optional encoded query (the filter of your "Case Report"), e.g. active=true^... Leave blank for every case.
 expression ServiceNowQuery = "" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=false]
-	queryGroup: Parameters
-
-	annotation PBI_ResultType = Text
-
-/// The ServiceNow Excel export: a local path or a SharePoint/OneDrive file URL. Used when DataSource = "Excel export".
-expression ExcelExportPath = "C:\REACH\sn_customerservice_case.xlsx" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 	queryGroup: Parameters
 
 	annotation PBI_ResultType = Text
@@ -565,8 +553,8 @@ expression FeaturedQuotes =
 	queryGroup: Lookups
 
 expression FieldMap =
-		// The request columns the model uses, by their name in the ServiceNow Excel export,
-		// with the ServiceNow API field that supplies each one when DataSource = "ServiceNow API".
+		// The request columns the model uses (named as in the web dashboard's source export, which
+		// the rest of the model refers to), with the ServiceNow API field that supplies each one.
 		//
 		// FILL IN the ApiField values that start with "TODO_": they are custom fields on the
 		// case table whose internal names (u_…) are specific to your instance. Find them in
@@ -653,25 +641,11 @@ expression RawRequestsApi =
 		    Result
 	queryGroup: Source
 
-expression RawRequestsExcel =
-		// The ServiceNow "Case Report" Excel export (first sheet). Used when
-		// DataSource = "Excel export": handy for checking the model against the files
-		// the current dashboard was built from. InferSheetDimensions works around the
-		// export's bogus sheet-size metadata.
-		let
-		    Book = Excel.Workbook(fnReadFile(ExcelExportPath), [UseHeaders = false, DelayTypes = true, InferSheetDimensions = true]),
-		    Sheet = Table.SelectRows(Book, each [Kind] = "Sheet"){0}[Data],
-		    Promoted = Table.PromoteHeaders(Sheet, [PromoteAllScalars = true]),
-		    Selected = Table.SelectColumns(Promoted, FieldMap[Column], MissingField.UseNull)
-		in
-		    Selected
-	queryGroup: Source
-
 expression RawRequestsAll =
 		// Every request in the source, typed, before anything is dropped. The survey joins
 		// against this (a rated request may later have been voided or marked duplicate).
 		let
-		    Raw = if DataSource = "ServiceNow API" then RawRequestsApi else RawRequestsExcel,
+		    Raw = RawRequestsApi,
 		    DateCols = Table.SelectRows(FieldMap, each [Kind] = "date")[Column],
 		    TextCols = Table.SelectRows(FieldMap, each [Kind] <> "date")[Column],
 		    AsText = Table.TransformColumns(Raw, List.Transform(TextCols, (c) => {c, each if _ = null then "" else Text.From(_), type text})),

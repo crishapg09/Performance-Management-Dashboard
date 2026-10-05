@@ -1,5 +1,5 @@
-// The request columns the model uses, by their name in the ServiceNow Excel export,
-// with the ServiceNow API field that supplies each one when DataSource = "ServiceNow API".
+// The request columns the model uses (named as in the web dashboard's source export, which
+// the rest of the model refers to), with the ServiceNow API field that supplies each one.
 //
 // FILL IN the ApiField values that start with "TODO_": they are custom fields on the
 // case table whose internal names (u_…) are specific to your instance. Find them in
